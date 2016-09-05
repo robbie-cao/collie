@@ -2,7 +2,7 @@ all: target
 FORCE: ;
 .PHONY: FORCE
 
-target: btnd
+target: btnd ledd
 
 %.o: %.c
 	@$(CC) $(CFLAGS) -c $< -o $@
@@ -15,6 +15,9 @@ target: btnd
 
 btnd: button.o
 	$(CXX) $(LDFLAGS) button.o -o btnd
+
+ledd: led.o
+	$(CXX) $(LDFLAGS) led.o -o ledd
 
 clean:
 	rm -f *.o btnd

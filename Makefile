@@ -25,6 +25,7 @@ endef
 define Package/miod/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/btnd $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ledd $(1)/usr/bin
 endef
 
 $(eval $(call BuildPackage,miod))
