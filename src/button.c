@@ -87,11 +87,13 @@ button_status(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 enum {
+        GET_ID,
         GET_NAME,
         __GET_MAX,
 };
 
 static const struct blobmsg_policy button_get_policy[__GET_MAX] = {
+        [GET_ID] = { .name = "id", .type = BLOBMSG_TYPE_INT32 },
         [GET_NAME] = { .name = "name", .type = BLOBMSG_TYPE_STRING },
 };
 
@@ -105,13 +107,16 @@ button_get(struct ubus_context *ctx, struct ubus_object *obj,
 
         blobmsg_parse(button_get_policy, __GET_MAX, tb, blob_data(msg), blob_len(msg));
 
-        if (!tb[GET_NAME]) {
+        if (!tb[GET_ID] && !tb[GET_NAME]) {
                 // Check if id valid
                 return UBUS_STATUS_INVALID_ARGUMENT;
         }
 
         for (i = 0; i < BTN_NUM; i++) {
-                if (!strcmp(blobmsg_get_string(tb[GET_NAME]), btn_io_map[i].name)) {
+                if (tb[GET_ID] && blobmsg_get_u32(tb[GET_ID]) == btn_io_map[i].gpio) {
+                        break;
+                }
+                if (tb[GET_NAME] && !strcmp(blobmsg_get_string(tb[GET_NAME]), btn_io_map[i].name)) {
                         break;
                 }
         }
