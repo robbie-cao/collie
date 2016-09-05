@@ -10,6 +10,21 @@
 
 #define LOG_TAG         "Btn"
 
+#define LOG_LEVEL_SYMBOL_VERBOSE        "V"
+#define LOG_LEVEL_SYMBOL_INFO           "I"
+#define LOG_LEVEL_SYMBOL_DEBUG          "D"
+#define LOG_LEVEL_SYMBOL_WARN           "W"
+#define LOG_LEVEL_SYMBOL_ERROR          "E"
+
+#define LOG(fmt, arg...)                printf(fmt, ##arg)
+#define LOGV(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_VERBOSE ## "\t" ## tag ## "\t" fmt, ## arg)
+#define LOGI(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_INFO    ## "\t" ## tag ## "\t" fmt, ## arg)
+#define LOGD(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_DEBUG   ## "\t" ## tag ## "\t" fmt, ## arg)
+#define LOGW(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_WARN    ## "\t" ## tag ## "\t" fmt, ## arg)
+#define LOGE(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_ERROR   ## "\t" ## tag ## "\t" fmt, ## arg)
+
+#define ERR(fmt, arg...)                fprintf(stderr, fmt, ##arg)
+
 #define DEBUG_BTN_LED   0
 #define DEBUG_BTN_LOG   0
 
@@ -19,6 +34,25 @@
 #define LOGD_BTN        __LOGD
 #endif
 
+typedef struct {
+        uint8_t code;
+        uint8_t gpio;
+} button_io_map_t;
+
+button_io_map_t btn_io_map[] =
+{
+        { BUTTON_CODE_PWR  , BUTTON_PIN_PWR}  ,
+        { BUTTON_CODE_RST  , BUTTON_PIN_RST}  ,
+        { BUTTON_CODE_REC  , BUTTON_PIN_REC}  ,
+        { BUTTON_CODE_PLAY , BUTTON_PIN_PLAY} ,
+        { BUTTON_CODE_PREV , BUTTON_PIN_PREV} ,
+        { BUTTON_CODE_NEXT , BUTTON_PIN_NEXT} ,
+};
+
+#define BTN_NUM     (sizeof(btn_io_map) / sizeof(btn_io_map[0]))
+
+static mraa_gpio_context btn_gpio[BTN_NUM];
+
 static button_click_status_t sBtnClkStatus = { 0, 0, 0 };
 
 static void button_dispatch_event(uint8_t code, uint8_t action)
@@ -26,9 +60,28 @@ static void button_dispatch_event(uint8_t code, uint8_t action)
         // TODO
 }
 
-void button_init(void)
+static void button_isr(void *param)
 {
+        LOG("%s\n", __FUNCTION__);
+
         // TODO
+}
+
+int button_init(void)
+{
+        uint8_t i = 0;
+
+        for (i = 0; i < BTN_NUM; i++) {
+                btn_gpio[i] = mraa_gpio_init(btn_io_map[i].gpio);
+                if (!btn_gpio[i]) {
+                        ERR("Init GPIO %d FAIL\n", btn_io_map[i].gpio);
+                        return -1;
+                }
+                mraa_gpio_dir(btn_gpio[i], MRAA_GPIO_IN);
+                mraa_gpio_isr(btn_gpio[i], MRAA_GPIO_EDGE_BOTH, button_isr, NULL);
+        }
+
+        return 0;
 }
 
 void button_press_ind(void)
