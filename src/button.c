@@ -158,6 +158,8 @@ static uint16_t btn_status_bits = 0;
 
 static void button_isr(void *param)
 {
+        void *arr;
+        void *tbl;
         uint8_t i = 0;
         uint16_t btn_bits = 0;
 
@@ -175,14 +177,26 @@ static void button_isr(void *param)
         if (!(btn_status_bits ^ btn_bits)) {
                 return ;
         }
+
+        blob_buf_init(&b, 0);
+        arr = blobmsg_open_array(&b, "status");
+
         for (i = 0; i < BTN_NUM; i++) {
                 if ((btn_status_bits & (1 << i)) ^ (btn_bits & (1 << i))) {
                         LOG("BTN %d %s\n", i, (btn_bits & (1 << i)) ? "PRESSED" : "RELEASE");
                         // Notify subscriber
                         // TODO
+                        tbl = blobmsg_open_table(&b, NULL);
+                        blobmsg_add_string(&b, "name", btn_io_map[i].name);
+                        blobmsg_add_u16(&b, "gpio", btn_io_map[i].gpio);
+                        blobmsg_add_u16(&b, "value", mraa_gpio_read(btn_gpio[i]));
+                        blobmsg_close_table(&b, tbl);
                 }
         }
         btn_status_bits = btn_bits;
+
+        blobmsg_close_array(&b, arr);
+        ubus_notify(ctx,  &button_object, "button", b.head, -1);
 }
 
 int button_init(void)
