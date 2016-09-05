@@ -35,18 +35,19 @@
 #endif
 
 typedef struct {
+        const char *name;
         uint8_t code;
         uint8_t gpio;
 } button_io_map_t;
 
 button_io_map_t btn_io_map[] =
 {
-        { BUTTON_CODE_PWR  , BUTTON_PIN_PWR}  ,
-        { BUTTON_CODE_RST  , BUTTON_PIN_RST}  ,
-        { BUTTON_CODE_REC  , BUTTON_PIN_REC}  ,
-        { BUTTON_CODE_PLAY , BUTTON_PIN_PLAY} ,
-        { BUTTON_CODE_PREV , BUTTON_PIN_PREV} ,
-        { BUTTON_CODE_NEXT , BUTTON_PIN_NEXT} ,
+        { "pwr"  , BUTTON_CODE_PWR  , BUTTON_PIN_PWR}  ,
+        { "rst"  , BUTTON_CODE_RST  , BUTTON_PIN_RST}  ,
+        { "rec"  , BUTTON_CODE_REC  , BUTTON_PIN_REC}  ,
+        { "play" , BUTTON_CODE_PLAY , BUTTON_PIN_PLAY} ,
+        { "prev" , BUTTON_CODE_PREV , BUTTON_PIN_PREV} ,
+        { "next" , BUTTON_CODE_NEXT , BUTTON_PIN_NEXT} ,
 };
 
 #define BTN_NUM     (sizeof(btn_io_map) / sizeof(btn_io_map[0]))
@@ -54,6 +55,99 @@ button_io_map_t btn_io_map[] =
 static mraa_gpio_context btn_gpio[BTN_NUM];
 
 static button_click_status_t sBtnClkStatus = { 0, 0, 0 };
+
+static struct ubus_context *ctx;
+static struct blob_buf b;
+
+static int
+button_status(struct ubus_context *ctx, struct ubus_object *obj,
+                struct ubus_request_data *req, const char *method,
+                struct blob_attr *msg)
+{
+        void *arr;
+        void *tbl;
+        uint8_t i = 0;
+
+        blob_buf_init(&b, 0);
+        arr = blobmsg_open_array(&b, "status");
+
+        for (i = 0; i < BTN_NUM; i++) {
+                tbl = blobmsg_open_table(&b, NULL);
+                blobmsg_add_string(&b, "name", btn_io_map[i].name);
+                blobmsg_add_u16(&b, "gpio", btn_io_map[i].gpio);
+                blobmsg_add_u16(&b, "value", mraa_gpio_read(btn_gpio[i]));
+                blobmsg_close_table(&b, tbl);
+
+        }
+        blobmsg_close_array(&b, arr);
+
+        ubus_send_reply(ctx, req, b.head);
+
+        return 0;
+}
+
+enum {
+        GET_NAME,
+        __GET_MAX,
+};
+
+static const struct blobmsg_policy button_get_policy[__GET_MAX] = {
+        [GET_NAME] = { .name = "name", .type = BLOBMSG_TYPE_STRING },
+};
+
+static int
+button_get(struct ubus_context *ctx, struct ubus_object *obj,
+                struct ubus_request_data *req, const char *method,
+                struct blob_attr *msg)
+{
+        struct blob_attr *tb[__GET_MAX];
+        uint8_t i = 0;
+
+        blobmsg_parse(button_get_policy, __GET_MAX, tb, blob_data(msg), blob_len(msg));
+
+        if (!tb[GET_NAME]) {
+                // Check if id valid
+                return UBUS_STATUS_INVALID_ARGUMENT;
+        }
+
+        for (i = 0; i < BTN_NUM; i++) {
+                if (!strcmp(blobmsg_get_string(tb[GET_NAME]), btn_io_map[i].name)) {
+                        break;
+                }
+        }
+
+        if (i >= BTN_NUM) {
+                // Not found the quest button by name
+                return UBUS_STATUS_INVALID_ARGUMENT;
+        }
+
+        // {
+        //      "name": "xxx"
+        //      "gpio": 16
+        //      "value": 1
+        // }
+        blob_buf_init(&b, 0);
+        blobmsg_add_string(&b, "name", btn_io_map[i].name);
+        blobmsg_add_u16(&b, "gpio", btn_io_map[i].gpio);
+        blobmsg_add_u16(&b, "value", mraa_gpio_read(btn_gpio[i]));
+        ubus_send_reply(ctx, req, b.head);
+
+        return 0;
+}
+
+static const struct ubus_method button_methods[] = {
+        { .name = "status" , .handler = button_status } ,
+        UBUS_METHOD("get"    , button_get    , button_get_policy)    ,
+};
+
+static struct ubus_object_type button_object_type = UBUS_OBJECT_TYPE("key", button_methods);
+
+static struct ubus_object button_object = {
+        .name = "key",
+        .type = &button_object_type,
+        .methods = button_methods,
+        .n_methods = ARRAY_SIZE(button_methods),
+};
 
 static void button_dispatch_event(uint8_t code, uint8_t action)
 {
@@ -180,14 +274,60 @@ void button_test(void)
         printf("%s\n", __FUNCTION__);
 }
 
-int main(void)
+static void button_main(void)
 {
+        int ret;
+
         button_init();
 
+        ret = ubus_add_object(ctx, &button_object);
+        if (ret) {
+                fprintf(stderr, "Failed to add object: %s\n", ubus_strerror(ret));
+        }
+        uloop_run();
+
+#if 0
         while (1) {
                 button_test();
                 sleep(2);
         }
+#endif
+}
+
+int main(int argc, char **argv)
+{
+        const char *ubus_socket = NULL;
+        int ch;
+
+        while ((ch = getopt(argc, argv, "cs:")) != -1) {
+                switch (ch) {
+                        case 's':
+                                ubus_socket = optarg;
+                                break;
+                        default:
+                                break;
+                }
+        }
+
+        argc -= optind;
+        argv += optind;
+
+        uloop_init();
+        signal(SIGPIPE, SIG_IGN);
+
+        ctx = ubus_connect(ubus_socket);
+        if (!ctx) {
+                fprintf(stderr, "Failed to connect to ubus\n");
+                return -1;
+        }
+
+        ubus_add_uloop(ctx);
+
+        button_main();
+
+        ubus_free(ctx);
+        uloop_done();
+
         return 0;
 }
 
