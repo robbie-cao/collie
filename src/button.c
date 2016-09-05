@@ -60,11 +60,35 @@ static void button_dispatch_event(uint8_t code, uint8_t action)
         // TODO
 }
 
+static uint16_t btn_status_bits = 0;
+
 static void button_isr(void *param)
 {
+        uint8_t i = 0;
+        uint16_t btn_bits = 0;
+
         LOG("%s\n", __FUNCTION__);
 
+        // Simply to scan all button status.
+        // Not necessary, do like this just to be make it simple.
+        // TO BE FURTHER OPTIMZED!
         // TODO
+        for (i = 0; i < BTN_NUM; i++) {
+                btn_bits |= (mraa_gpio_read(btn_gpio[i]) << i);
+        }
+
+        // Check which button status has changed
+        if (!(btn_status_bits ^ btn_bits)) {
+                return ;
+        }
+        for (i = 0; i < BTN_NUM; i++) {
+                if ((btn_status_bits & (1 << i)) ^ (btn_bits & (1 << i))) {
+                        LOG("BTN %d %s\n", i, (btn_bits & (1 << i)) ? "PRESSED" : "RELEASE");
+                        // Notify subscriber
+                        // TODO
+                }
+        }
+        btn_status_bits = btn_bits;
 }
 
 int button_init(void)
@@ -158,6 +182,8 @@ void button_test(void)
 
 int main(void)
 {
+        button_init();
+
         while (1) {
                 button_test();
                 sleep(2);

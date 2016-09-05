@@ -45,7 +45,7 @@ void button_press_ind(void);
 void button_longpress_ind(void);
 void button_click_monitor(void);
 
-void button_init(void);
+int button_init(void);
 
 #endif /* __BUTTON_H__ */
 
