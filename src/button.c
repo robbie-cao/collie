@@ -189,7 +189,7 @@ static void button_isr(void *param)
 
         for (i = 0; i < BTN_NUM; i++) {
                 if ((btn_status_bits & (1 << i)) ^ (btn_bits & (1 << i))) {
-                        LOG("BTN %d %s\n", i, (btn_bits & (1 << i)) ? "PRESSED" : "RELEASE");
+                        LOG("BTN %d %s\n", i, (btn_bits & (1 << i)) ? "RELEASE" : "PRESSED");
                         // Notify subscriber
                         // TODO
                         tbl = blobmsg_open_table(&b, NULL);
