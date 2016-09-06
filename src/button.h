@@ -1,12 +1,14 @@
 #ifndef __BUTTON_H__
 #define __BUTTON_H__
 
-#define BUTTON_PIN_PWR            2
-#define BUTTON_PIN_RST            0
-#define BUTTON_PIN_REC            14
-#define BUTTON_PIN_PLAY           15
-#define BUTTON_PIN_PREV           16
-#define BUTTON_PIN_NEXT           17
+#define BUTTON_PIN_PWR            0     // TBD
+#define BUTTON_PIN_RST            42
+#define BUTTON_PIN_REC            40
+#define BUTTON_PIN_PLAY           39
+#define BUTTON_PIN_PREV           41
+#define BUTTON_PIN_NEXT           41
+#define BUTTON_PIN_LEFT           0
+#define BUTTON_PIN_RIGHT          41
 
 #define BUTTON_MULTIPLECLICK_TIME 1000    /* ms */
 #define BUTTON_LONGPRESS_TIME     2000    /* ms */
@@ -18,6 +20,8 @@ enum {
         BUTTON_CODE_PLAY,
         BUTTON_CODE_PREV,
         BUTTON_CODE_NEXT,
+        BUTTON_CODE_LEFT,
+        BUTTON_CODE_RIGHT,
 
         // More if any
 };

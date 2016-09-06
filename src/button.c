@@ -42,12 +42,18 @@ typedef struct {
 
 button_io_map_t btn_io_map[] =
 {
+#if 0
         { "pwr"  , BUTTON_CODE_PWR  , BUTTON_PIN_PWR}  ,
+#endif
         { "rst"  , BUTTON_CODE_RST  , BUTTON_PIN_RST}  ,
         { "rec"  , BUTTON_CODE_REC  , BUTTON_PIN_REC}  ,
         { "play" , BUTTON_CODE_PLAY , BUTTON_PIN_PLAY} ,
-        { "prev" , BUTTON_CODE_PREV , BUTTON_PIN_PREV} ,
         { "next" , BUTTON_CODE_NEXT , BUTTON_PIN_NEXT} ,
+#if 0
+        { "prev" , BUTTON_CODE_PREV , BUTTON_PIN_PREV} ,
+        { "left" , BUTTON_CODE_LEFT , BUTTON_PIN_LEFT} ,
+        { "right", BUTTON_CODE_RIGHT, BUTTON_PIN_RIGHT} ,
+#endif
 };
 
 #define BTN_NUM     (sizeof(btn_io_map) / sizeof(btn_io_map[0]))
@@ -126,11 +132,6 @@ button_get(struct ubus_context *ctx, struct ubus_object *obj,
                 return UBUS_STATUS_INVALID_ARGUMENT;
         }
 
-        // {
-        //      "name": "xxx"
-        //      "gpio": 16
-        //      "value": 1
-        // }
         blob_buf_init(&b, 0);
         blobmsg_add_string(&b, "name", btn_io_map[i].name);
         blobmsg_add_u16(&b, "gpio", btn_io_map[i].gpio);
@@ -159,7 +160,7 @@ static void button_dispatch_event(uint8_t code, uint8_t action)
         // TODO
 }
 
-static uint16_t btn_status_bits = 0;
+static uint16_t btn_status_bits = -1;
 
 static void button_isr(void *param)
 {
@@ -168,7 +169,7 @@ static void button_isr(void *param)
         uint8_t i = 0;
         uint16_t btn_bits = 0;
 
-        LOG("%s\n", __FUNCTION__);
+        //LOG("%s\n", __FUNCTION__);
 
         // Simply to scan all button status.
         // Not necessary, do like this just to be make it simple.
