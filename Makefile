@@ -11,10 +11,10 @@ define Package/miod
 	CATEGORY:=Utilities
 	DEFAULT:=y
 	TITLE:=Mua I/O daemon
-	DEPENDS:=+libmraa +libubus +libubox
+	DEPENDS:=+libmraa +libubus +libubox +libblobmsg-json
 endef
 
-EXTRA_LDFLAGS += -lmraa -lubus -lubox
+EXTRA_LDFLAGS += -lmraa -lubus -lubox -lblobmsg_json
 TARGET_CFLAGS+= -Wall
 
 define Build/Prepare

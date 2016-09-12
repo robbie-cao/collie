@@ -88,6 +88,7 @@ button_status(struct ubus_context *ctx, struct ubus_object *obj,
         blobmsg_close_array(&b, arr);
 
         ubus_send_reply(ctx, req, b.head);
+        fprintf(stdout, "json: %s\n", blobmsg_format_json(b.head, true));
 
         return 0;
 }
@@ -137,6 +138,7 @@ button_get(struct ubus_context *ctx, struct ubus_object *obj,
         blobmsg_add_u16(&b, "gpio", btn_io_map[i].gpio);
         blobmsg_add_u16(&b, "value", mraa_gpio_read(btn_gpio[i]));
         ubus_send_reply(ctx, req, b.head);
+        fprintf(stdout, "json: %s\n", blobmsg_format_json(b.head, true));
 
         return 0;
 }
@@ -203,6 +205,7 @@ static void button_isr(void *param)
 
         blobmsg_close_array(&b, arr);
         ubus_notify(ctx,  &button_object, "button", b.head, -1);
+        fprintf(stdout, "json: %s\n", blobmsg_format_json(b.head, true));
 }
 
 int button_init(void)

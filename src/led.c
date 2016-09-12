@@ -88,6 +88,7 @@ led_status(struct ubus_context *ctx, struct ubus_object *obj,
         blobmsg_close_array(&b, arr);
 
         ubus_send_reply(ctx, req, b.head);
+        fprintf(stdout, "json: %s\n", blobmsg_format_json(b.head, true));
 
         return 0;
 }
@@ -144,6 +145,7 @@ led_get(struct ubus_context *ctx, struct ubus_object *obj,
         blobmsg_add_u16(&b, "action", led_io_map[i].action);
         blobmsg_add_u16(&b, "value", mraa_gpio_read(led_gpio[i]));
         ubus_send_reply(ctx, req, b.head);
+        fprintf(stdout, "json: %s\n", blobmsg_format_json(b.head, true));
 
         return 0;
 }
@@ -212,6 +214,7 @@ led_set(struct ubus_context *ctx, struct ubus_object *obj,
         blobmsg_add_u16(&b, "value", mraa_gpio_read(led_gpio[i]));
         blobmsg_add_u16(&b, "action", led_io_map[i].action);
         ubus_send_reply(ctx, req, b.head);
+        fprintf(stdout, "json: %s\n", blobmsg_format_json(b.head, true));
 
         return 0;
 }
