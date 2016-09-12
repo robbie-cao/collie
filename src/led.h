@@ -1,9 +1,9 @@
 #ifndef __LED_H__
 #define __LED_H__
 
-#define LED_PIN_STATUS              14
-#define LED_PIN_ALERT               15
-#define LED_PIN_BATTERY             16
+#define LED_PIN_STATUS              15
+#define LED_PIN_ALERT               16
+#define LED_PIN_BATTERY             17
 
 enum {
         LED_CODE_STATUS,
@@ -11,6 +11,12 @@ enum {
         LED_CODE_BATTERY,
 
         // More if any
+};
+
+enum {
+        LED_OFF = 0,
+        LED_ON,
+        LED_BLINK,
 };
 
 #endif /* __LED_H__ */

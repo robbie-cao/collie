@@ -33,17 +33,20 @@
 #define LOGD_LED        __LOGD
 #endif
 
+#define LED_FLASH_INTERVAL              1000 // ms
+
 typedef struct {
         const char *name;
         uint8_t code;
         uint8_t gpio;
+        uint8_t action;
 } led_io_map_t;
 
 led_io_map_t led_io_map[] =
 {
-        { "status"  , LED_CODE_STATUS  , LED_PIN_STATUS  } ,
-        { "alert"   , LED_CODE_ALERT   , LED_PIN_ALERT   } ,
-        { "battery" , LED_CODE_BATTERY , LED_PIN_BATTERY } ,
+        { "status"  , LED_CODE_STATUS  , LED_PIN_STATUS  , 0 } ,
+        { "alert"   , LED_CODE_ALERT   , LED_PIN_ALERT   , 0 } ,
+        { "battery" , LED_CODE_BATTERY , LED_PIN_BATTERY , 0 } ,
 };
 
 #define LED_NUM     (sizeof(led_io_map) / sizeof(led_io_map[0]))
@@ -52,6 +55,8 @@ static mraa_gpio_context led_gpio[LED_NUM];
 
 static struct ubus_context *ctx;
 static struct blob_buf b;
+
+static struct uloop_timeout led_timeout;
 
 static int
 led_status(struct ubus_context *ctx, struct ubus_object *obj,
@@ -65,10 +70,17 @@ led_status(struct ubus_context *ctx, struct ubus_object *obj,
         blob_buf_init(&b, 0);
         arr = blobmsg_open_array(&b, "status");
 
+        // {
+        //      "name": "xxx"
+        //      "gpio": 16
+        //      "action": 0/1/2  -> 0 - off, 1 - on, 2 - blink
+        //      "value": 0/1
+        // }
         for (i = 0; i < LED_NUM; i++) {
                 tbl = blobmsg_open_table(&b, NULL);
                 blobmsg_add_string(&b, "name", led_io_map[i].name);
                 blobmsg_add_u16(&b, "gpio", led_io_map[i].gpio);
+                blobmsg_add_u16(&b, "action", led_io_map[i].action);
                 blobmsg_add_u16(&b, "value", mraa_gpio_read(led_gpio[i]));
                 blobmsg_close_table(&b, tbl);
 
@@ -123,11 +135,13 @@ led_get(struct ubus_context *ctx, struct ubus_object *obj,
         // {
         //      "name": "xxx"
         //      "gpio": 16
-        //      "value": 1
+        //      "action": 0/1/2  -> 0 - off, 1 - on, 2 - blink
+        //      "value": 0/1
         // }
         blob_buf_init(&b, 0);
         blobmsg_add_string(&b, "name", led_io_map[i].name);
         blobmsg_add_u16(&b, "gpio", led_io_map[i].gpio);
+        blobmsg_add_u16(&b, "action", led_io_map[i].action);
         blobmsg_add_u16(&b, "value", mraa_gpio_read(led_gpio[i]));
         ubus_send_reply(ctx, req, b.head);
 
@@ -175,14 +189,17 @@ led_set(struct ubus_context *ctx, struct ubus_object *obj,
                 case 0:
                         // OFF
                         mraa_gpio_write(led_gpio[i], 0);
+                        led_io_map[i].action = LED_OFF;
                         break;
                 case 1:
                         mraa_gpio_write(led_gpio[i], 1);
+                        led_io_map[i].action = LED_ON;
                         // ON
                         break;
                 case 2:
                         // FLASH
-                        // TODO
+                        led_io_map[i].action = LED_BLINK;
+                        uloop_timeout_set(&led_timeout, LED_FLASH_INTERVAL);
                         break;
                 default:
                         break;
@@ -193,6 +210,7 @@ led_set(struct ubus_context *ctx, struct ubus_object *obj,
         blobmsg_add_string(&b, "name", led_io_map[i].name);
         blobmsg_add_u16(&b, "gpio", led_io_map[i].gpio);
         blobmsg_add_u16(&b, "value", mraa_gpio_read(led_gpio[i]));
+        blobmsg_add_u16(&b, "action", led_io_map[i].action);
         ubus_send_reply(ctx, req, b.head);
 
         return 0;
@@ -262,6 +280,19 @@ static void led_main(void)
 #endif
 }
 
+static void led_flash_handler(struct uloop_timeout *t)
+{
+        uint8_t i;
+
+        for (i = 0; i < LED_NUM; i++) {
+                if (led_io_map[i].action == LED_BLINK) {
+                        mraa_gpio_write(led_gpio[i], !mraa_gpio_read(led_gpio[i]));
+                }
+        }
+
+        uloop_timeout_set(t, LED_FLASH_INTERVAL);
+}
+
 int main(int argc, char **argv)
 {
         const char *ubus_socket = NULL;
@@ -289,6 +320,7 @@ int main(int argc, char **argv)
                 return -1;
         }
 
+        led_timeout.cb = led_flash_handler;
         ubus_add_uloop(ctx);
 
         led_main();
