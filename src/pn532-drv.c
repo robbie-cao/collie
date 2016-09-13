@@ -28,13 +28,26 @@
 #define LOGW(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_WARN    ## "\t" ## tag ## "\t" fmt, ## arg)
 #define LOGE(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_ERROR   ## "\t" ## tag ## "\t" fmt, ## arg)
 
+#define D(fmt, arg...)                  printf("Line %d:\t" fmt, __LINE__, ##arg)
+#define DD()                            printf("Line %d, %s\n", __LINE__, __FUNCTION__)
 
-static mraa_i2c_context i2c;
+#define UART_PORT           1
+#define UART_BAUDRATE       115200
+
+static mraa_uart_context uart;
 
 static uint8 sDataBuf[PN532_DATABUF_MAX];
 static uint8 sWaitAck = 0;          // Flag set after sending cmd, send ACK on the coming IRQ from PN532
 
 static uint8 PN532_ACK_FRAME[] = { 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00 };
+
+static sleep_ms(int ms) {
+  struct timeval tv;
+
+  tv.tv_sec = ms / 1000;
+  tv.tv_usec = (ms % 1000) * 1000;
+  select(0, NULL, NULL, NULL, &tv);
+}
 
 uint8 PN532_Write(uint8 *data, uint8 len)
 {
@@ -45,7 +58,7 @@ uint8 PN532_Write(uint8 *data, uint8 len)
     return PN532_INVALID_PARAM;
   }
 
-  res = mraa_i2c_write(i2c, data, len);
+  res = mraa_uart_write(uart, data, len);
 
 #if DEBUG_PN532_BYTE
   LOG("W - %02d - 0x", res);
@@ -68,7 +81,7 @@ uint8 PN532_Read(uint8 *data, uint8 len)
     return PN532_INVALID_PARAM;
   }
 
-  res = mraa_i2c_read(i2c, data, len);
+  res = mraa_uart_read(uart, data, len);
 
 #if DEBUG_PN532_BYTE
   LOG("R - %02d - 0x", res);
@@ -116,7 +129,7 @@ uint8 PN532_SendCmd(uint8 cmd, uint8 *pCmdData, uint8 dataLen, uint8 waitAck)
   sDataBuf[idx++] = (~sum) + 1;          // Data Checksum
   sDataBuf[idx++] = PN532_POSTAMBLE;
 
-  res = mraa_i2c_write(i2c, sDataBuf, idx);
+  res = mraa_uart_write(uart, sDataBuf, idx);
 #if DEBUG_PN532_BYTE
   LOG("W - %02d - 0x", res);
   for (i = 0; i < idx; i++) {
@@ -127,16 +140,17 @@ uint8 PN532_SendCmd(uint8 cmd, uint8 *pCmdData, uint8 dataLen, uint8 waitAck)
 
   sWaitAck = (res == idx ? waitAck : 0);
 
-  return (res == MRAA_SUCCESS ? PN532_GOOD : PN532_BUS_BUSY);
+  return (res == idx ? PN532_GOOD : PN532_BUS_BUSY);
 }
 
 uint8 PN532_SendAck(void)
 {
   uint8 res = PN532_BUS_BUSY;
+  uint8 len = sizeof(PN532_ACK_FRAME);
 
-  res = mraa_i2c_write(i2c, PN532_ACK_FRAME, sizeof(PN532_ACK_FRAME));
+  res = mraa_uart_write(uart, PN532_ACK_FRAME, len);
 
-  return (res == MRAA_SUCCESS ? PN532_GOOD : PN532_BUS_BUSY);
+  return (res == len ? PN532_GOOD : PN532_BUS_BUSY);
 }
 
 /**
@@ -150,7 +164,7 @@ int8 PN532_ReadAck(void)
   uint8 res = PN532_BUS_BUSY;
   uint8 i = 0;
 
-  res = mraa_i2c_read(i2c, sDataBuf, PN532_ACK_PACKET_LEN);
+  res = mraa_uart_read(uart, sDataBuf, PN532_ACK_PACKET_LEN);
 
 #if DEBUG_PN532_BYTE
   LOG("R - %02d - 0x", res);
@@ -185,7 +199,7 @@ int8 PN532_ReadRsp(uint8 *pResp)
     return PN532_INVALID_PARAM;
   }
 
-  res = mraa_i2c_read(i2c, pResp, PN532_DATABUF_MAX);
+  res = mraa_uart_read(uart, pResp, PN532_DATABUF_MAX);
 
 #if DEBUG_PN532_BYTE
   LOG("R - %02d - 0x", res);
@@ -255,11 +269,13 @@ uint8 PN532_GetFirmwareVersion(PN532_FirmwareVersion_t *pVer)
   if (res != PN532_GOOD) {
     return res;
   }
+  sleep_ms(100);
 
   LOG("## ReadAck\r\n");
   if (PN532_ReadAck() != PN532_ACK) {
     return PN532_INVALID_ACK;
   }
+  sleep_ms(100);
 
   LOG("## ReadRsp\r\n");
   memset(sDataBuf, 0, sizeof(sDataBuf));    // Clean buffer for sure
@@ -337,8 +353,7 @@ uint8 PN532_InListPassiveTarget(PN532_InListPassiveTarget_Cmd_t *pCmd, PN532_InL
     return PN532_INVALID_ACK;
   }
 
-  //delayMS(5);                               // FIXME: necessary for POLL? No need for IRQ
-  usleep(5000);                               // FIXME: necessary for POLL? No need for IRQ
+  sleep_ms(50);                             // FIXME: necessary for POLL? No need for IRQ
 
   memset(sDataBuf, 0, sizeof(sDataBuf));    // Clean buffer for sure
   res = PN532_ReadRsp(sDataBuf);
@@ -415,6 +430,7 @@ uint8 PN532_FrameParser(const uint8 *pFrame, uint8 frmLen, void **ppPacket, uint
     }
     p += 1;
   }
+  D("idx - %d\n", idx);
   if (idx == frmLen - PN532_FRAME_LEN_MIN) {
     return PN532_INVALID_FRAME;
   }
@@ -442,10 +458,12 @@ uint8 PN532_FrameParser(const uint8 *pFrame, uint8 frmLen, void **ppPacket, uint
   if (!len
       || len > PN532_DATABUF_MAX    // FIXME: PN532 support 255 as MAX. Extra limitation here!
      ) {
+    DD();
     return PN532_INVALID_FRAME;
   }
   checksum = ~len + 1;
   if (checksum != p[4]) {
+    DD();
     return PN532_INVALID_FRAME;
   }
   // Data Checksum
@@ -457,6 +475,7 @@ uint8 PN532_FrameParser(const uint8 *pFrame, uint8 frmLen, void **ppPacket, uint
   }
   checksum = ~sum + 1;
   if (checksum != p[idx]) {
+    DD();
     return PN532_INVALID_FRAME;
   }
 
@@ -491,23 +510,34 @@ void PN532_Test(void)
   res = PN532_GetFirmwareVersion(&fwVer);
   LOG("Get_FW_Ver: 0x%02x\r\n", res);
 
+#if 0
   res = PN532_InListPassiveTarget(&cmd, &resp);
   LOG("InLstPasTg: 0x%02x\r\n", res);
+#endif
 }
 
 void PN532_Init(void)
 {
   int res = 0;
 
-  i2c = mraa_i2c_init(0);
+  uart = mraa_uart_init(UART_PORT);
 
-  if (!i2c) {
-    fprintf(stderr, "I2C init fail!\n");
+  if (!uart) {
+    fprintf(stderr, "UART init fail!\n");
     return ;
 
   }
-  res = mraa_i2c_address(i2c, PN532_I2C_ADDRESS);
-  fprintf(stdout, "Set PN532 I2C addr %02x, res: %d\n", PN532_I2C_ADDRESS, res);
+  mraa_uart_set_baudrate(uart, UART_BAUDRATE);
+  mraa_uart_set_mode(uart, 8, MRAA_UART_PARITY_NONE, 1);
+
+  uint8_t cmd_str_wakeup[] =
+  {
+    0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD4, 0x14, 0x01, 0x17, 0x00
+  };
+  res = mraa_uart_write(uart, cmd_str_wakeup, sizeof(cmd_str_wakeup));
+  LOG("Wakeup res - %d\n", res);
+  sleep_ms(100);
 }
 
 int main(void)
