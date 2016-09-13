@@ -2,11 +2,11 @@
 #define __BUTTON_H__
 
 #define BUTTON_PIN_PWR            0     // TBD
-#define BUTTON_PIN_RST            42
-#define BUTTON_PIN_REC            40
-#define BUTTON_PIN_PLAY           39
-#define BUTTON_PIN_PREV           41
-#define BUTTON_PIN_NEXT           41
+#define BUTTON_PIN_RST            14
+#define BUTTON_PIN_REC            15
+#define BUTTON_PIN_PLAY           16
+#define BUTTON_PIN_PREV           17
+#define BUTTON_PIN_NEXT           17
 #define BUTTON_PIN_LEFT           0
 #define BUTTON_PIN_RIGHT          41
 
@@ -27,9 +27,9 @@ enum {
 };
 
 enum {
-        BUTTON_ACTION_PRESSED,
-        BUTTON_ACTION_LONGPRESS,
+        BUTTON_ACTION_PRESSED = 0,
         BUTTON_ACTION_RELEASED,
+        BUTTON_ACTION_LONGPRESS,
         BUTTON_ACTION_DOUBLE_CLICK,
         BUTTON_ACTION_TRIBLE_CLICK,
 };

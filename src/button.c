@@ -25,6 +25,8 @@
 
 #define ERR(fmt, arg...)                fprintf(stderr, fmt, ##arg)
 
+#define D()                             printf("%s - %d\n", __FUNCTION__, __LINE__)
+
 #define DEBUG_BTN_LED   0
 #define DEBUG_BTN_LOG   0
 
@@ -33,6 +35,8 @@
 #else
 #define LOGD_BTN        __LOGD
 #endif
+
+#define BUTTON_LP_INTERVAL              2000 // ms
 
 typedef struct {
         const char *name;
@@ -59,11 +63,37 @@ button_io_map_t btn_io_map[] =
 #define BTN_NUM     (sizeof(btn_io_map) / sizeof(btn_io_map[0]))
 
 static mraa_gpio_context btn_gpio[BTN_NUM];
+struct uloop_timeout btn_timeout[BTN_NUM];
 
 static button_click_status_t sBtnClkStatus = { 0, 0, 0 };
 
 static struct ubus_context *ctx;
 static struct blob_buf b;
+
+static void
+button_lp_handler(struct uloop_timeout *t)
+{
+        // FIXME:
+        // There will be problem if there's more than one buttons long pressed togethere
+        // as multiple buttons share the same handler function without button id
+        uint8_t i;
+        void *tbl;
+
+        D();
+        for (i = 0; i < BTN_NUM; i++) {
+                if (!mraa_gpio_read(btn_gpio[i])) {
+                        // GPIO low for PRESS
+                        LOG("BTN %d %s\n", i, "LONGPRESS");
+                        // Notify subscriber
+                        // TODO
+                        tbl = blobmsg_open_table(&b, NULL);
+                        blobmsg_add_string(&b, "name", btn_io_map[i].name);
+                        blobmsg_add_u16(&b, "gpio", btn_io_map[i].gpio);
+                        blobmsg_add_u16(&b, "value", BUTTON_ACTION_LONGPRESS);
+                        blobmsg_close_table(&b, tbl);
+                }
+        }
+}
 
 static int
 button_status(struct ubus_context *ctx, struct ubus_object *obj,
@@ -171,8 +201,6 @@ static void button_isr(void *param)
         uint8_t i = 0;
         uint16_t btn_bits = 0;
 
-        //LOG("%s\n", __FUNCTION__);
-
         // Simply to scan all button status.
         // Not necessary, do like this just to be make it simple.
         // TO BE FURTHER OPTIMZED!
@@ -197,8 +225,18 @@ static void button_isr(void *param)
                         tbl = blobmsg_open_table(&b, NULL);
                         blobmsg_add_string(&b, "name", btn_io_map[i].name);
                         blobmsg_add_u16(&b, "gpio", btn_io_map[i].gpio);
-                        blobmsg_add_u16(&b, "value", mraa_gpio_read(btn_gpio[i]));
+                        blobmsg_add_u16(&b, "value", (btn_bits & (1 << i)) ? BUTTON_ACTION_RELEASED : BUTTON_ACTION_PRESSED);
                         blobmsg_close_table(&b, tbl);
+                        // Timer for long press check
+                        if (btn_bits & (1 << i)) {
+                                LOG("BTN %d %s\n", i, "timer stop");
+                                // stop timer after release
+                                uloop_timeout_cancel(&btn_timeout[i]);
+                        } else {
+                                LOG("BTN %d %s\n", i, "timer start");
+                                // start timer on press
+                                uloop_timeout_set(&btn_timeout[i], BUTTON_LP_INTERVAL);
+                        }
                 }
         }
         btn_status_bits = btn_bits;
@@ -220,6 +258,7 @@ int button_init(void)
                 }
                 mraa_gpio_dir(btn_gpio[i], MRAA_GPIO_IN);
                 mraa_gpio_isr(btn_gpio[i], MRAA_GPIO_EDGE_BOTH, button_isr, NULL);
+                btn_timeout[i].cb = button_lp_handler;
         }
 
         return 0;
@@ -301,8 +340,6 @@ static void button_main(void)
 {
         int ret;
 
-        button_init();
-
         ret = ubus_add_object(ctx, &button_object);
         if (ret) {
                 fprintf(stderr, "Failed to add object: %s\n", ubus_strerror(ret));
@@ -343,6 +380,8 @@ int main(int argc, char **argv)
                 fprintf(stderr, "Failed to connect to ubus\n");
                 return -1;
         }
+
+        button_init();
 
         ubus_add_uloop(ctx);
 
