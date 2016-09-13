@@ -599,19 +599,15 @@ uint8 PN532_InAutoPoll(void)
 
 void PN532_Test(void)
 {
-  uint8 buf[8];
   uint8 res = 0;
-  PN532_FirmwareVersion_t fwVer;
+  uint8 buf[8];
   PN532_InListPassiveTarget_Cmd_t cmd = { 0x01, 0x00, NULL, 0 };
   PN532_InListPassiveTarget_Resp_t resp = { 0x00, 0x00, buf, 0 };
 
-  res = PN532_GetFirmwareVersion(&fwVer);
-  LOG("Get_FW_Ver: 0x%02x\r\n", res);
-
-#if 0
   res = PN532_InListPassiveTarget(&cmd, &resp);
   LOG("InLstPasTg: 0x%02x\r\n", res);
-#endif
+
+  sleep_ms(100);
 }
 
 void PN532_Init(void)
@@ -631,8 +627,19 @@ void PN532_Init(void)
 
 int main(void)
 {
+  uint8 res = 0;
+  PN532_FirmwareVersion_t fwVer;
+
   PN532_Init();
+
   PN532_WakeUp();
+  PN532_SAMConfig();
+  PN532_ActiveTarget();
+  PN532_InAutoPoll();
+
+  res = PN532_GetFirmwareVersion(&fwVer);
+  LOG("Get_FW_Ver: 0x%02x\r\n", res);
+
   while (1) {
     PN532_Test();
     sleep(2);
