@@ -2,7 +2,7 @@ all: target
 FORCE: ;
 .PHONY: FORCE
 
-target: btnd ledd
+target: btnd ledd nfcd
 
 %.o: %.c
 	@$(CC) $(CFLAGS) -c $< -o $@
@@ -14,10 +14,13 @@ target: btnd ledd
 	@$(CXX) $(CFLAGS) -c $< -o $@
 
 btnd: button.o
-	$(CXX) $(LDFLAGS) button.o -o btnd
+	$(CC) $(LDFLAGS) $^ -o $@
 
 ledd: led.o
-	$(CXX) $(LDFLAGS) led.o -o ledd
+	$(CC) $(LDFLAGS) $^ -o $@
+
+nfcd: pn532-drv.o
+	$(CC) $(LDFLAGS) $^ -o $@
 
 clean:
 	rm -f *.o btnd
