@@ -507,6 +507,9 @@ uint8 PN532_WakeUp(void)
   LOG("Wakeup res - %d\n", res);
   sleep_ms(100);
 
+  // Check ACK and Response Frame
+  // TODO
+
   return res;
 }
 
@@ -534,6 +537,9 @@ uint8 PN532_SAMConfig(void)
   LOG("SAMConfig res - %d\n", res);
   sleep_ms(50);
 
+  // Check ACK and Response Frame
+  // TODO
+
   return PN532_GOOD;
 }
 
@@ -557,6 +563,35 @@ uint8 PN532_ActiveTarget(void)
   res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
   LOG("SAMConfig res - %d\n", res);
   sleep_ms(50);
+
+  // Check ACK and Response Frame
+  // TODO
+
+  return PN532_GOOD;
+}
+
+/*
+ * +----+----+--------+--------+--------+----------+-----+----------+
+ * | D4 | 60 | PollNr | Period | Type 1 | [Type 2] | ... | [Type N] |
+ * +----+----+--------+--------+--------+----------+-----+----------+
+ */
+uint8 PN532_InAutoPoll(void)
+{
+  uint8 res = 0;
+  const uint8_t cmd_arr[] =
+  {
+    0x00, 0x00, 0xff,
+    0x05, 0xfb,
+    0xd4, 0x60, 0xff, 0x01, 0x00,
+    0xcc, 0x00
+  };
+
+  res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
+  LOG("SAMConfig res - %d\n", res);
+  sleep_ms(50);
+
+  // Check ACK and Response Frame
+  // TODO
 
   return PN532_GOOD;
 }
