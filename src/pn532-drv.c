@@ -494,19 +494,73 @@ uint8 PN532_FrameParser(const uint8 *pFrame, uint8 frmLen, void **ppPacket, uint
   return p[5];
 }
 
-void PN532_WakeUp(void)
+uint8 PN532_WakeUp(void)
 {
-  const uint8_t cmd_str_wakeup[] =
+  uint8 res = 0;
+  const uint8_t cmd_arr[] =
   {
     0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD4, 0x14, 0x01, 0x17, 0x00
   };
-  uint8 res;
 
-  res = mraa_uart_write(uart, cmd_str_wakeup, sizeof(cmd_str_wakeup));
+  res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
   LOG("Wakeup res - %d\n", res);
   sleep_ms(100);
+
+  return res;
 }
+
+/*
+ * +----+----+------+---------+-------+
+ * | D4 | 14 | Mode | Timeout | [IRQ] |
+ * +----+----+------+---------+-------+
+ * Cmd     : 0x14
+ * Mode    : 01 - Normal, 02 - Virtual, 03 - Wired
+ * Timeout : Only valid for Mode = 02
+ * IRQ     : 00 - Disable, 01 - Enable
+ */
+uint8 PN532_SAMConfig(void)
+{
+  uint8 res = 0;
+  const uint8_t cmd_arr[] =
+  {
+    0x00, 0x00, 0xff,
+    0x05, 0xfb,
+    0xd4, 0x14, 0x01, 0x14, 0x01,
+    0x02, 0x00
+  };
+
+  res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
+  LOG("SAMConfig res - %d\n", res);
+  sleep_ms(50);
+
+  return PN532_GOOD;
+}
+
+/*
+ * +----+----+---------+----+------+------+
+ * | D4 | 56 | ActPass | BR | Next | More |
+ * +----+----+---------+----+------+------+
+ */
+uint8 PN532_ActiveTarget(void)
+{
+  uint8 res = 0;
+  const uint8_t cmd_arr[] =
+  {
+    0x00, 0x00, 0xff,
+    0x0a, 0xf6,
+    0xd4, 0x56, 0x01, 0x00, 0x01,
+    0x00, 0xff, 0xff, 0x00, 0x00,
+    0xd6, 0x00
+  };
+
+  res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
+  LOG("SAMConfig res - %d\n", res);
+  sleep_ms(50);
+
+  return PN532_GOOD;
+}
+
 
 void PN532_Test(void)
 {
