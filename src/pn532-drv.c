@@ -504,7 +504,7 @@ uint8 PN532_WakeUp(void)
   };
 
   res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
-  LOG("Wakeup res - %d\n", res);
+  LOG("%s res - %d\n", __FUNCTION__, res);
   sleep_ms(100);
 
   // Check ACK and Response Frame
@@ -534,7 +534,7 @@ uint8 PN532_SAMConfig(void)
   };
 
   res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
-  LOG("SAMConfig res - %d\n", res);
+  LOG("%s res - %d\n", __FUNCTION__, res);
   sleep_ms(50);
 
   // Check ACK and Response Frame
@@ -561,7 +561,7 @@ uint8 PN532_ActiveTarget(void)
   };
 
   res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
-  LOG("SAMConfig res - %d\n", res);
+  LOG("%s res - %d\n", __FUNCTION__, res);
   sleep_ms(50);
 
   // Check ACK and Response Frame
@@ -587,7 +587,7 @@ uint8 PN532_InAutoPoll(void)
   };
 
   res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
-  LOG("SAMConfig res - %d\n", res);
+  LOG("%s res - %d\n", __FUNCTION__, res);
   sleep_ms(50);
 
   // Check ACK and Response Frame
