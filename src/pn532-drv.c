@@ -430,8 +430,8 @@ uint8 PN532_FrameParser(const uint8 *pFrame, uint8 frmLen, void **ppPacket, uint
     }
     p += 1;
   }
-  D("idx - %d\n", idx);
   if (idx == frmLen - PN532_FRAME_LEN_MIN) {
+    D("idx - %d\n", idx);
     return PN532_INVALID_FRAME;
   }
 
@@ -496,7 +496,16 @@ uint8 PN532_FrameParser(const uint8 *pFrame, uint8 frmLen, void **ppPacket, uint
 
 void PN532_WakeUp(void)
 {
-  // TODO
+  const uint8_t cmd_str_wakeup[] =
+  {
+    0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD4, 0x14, 0x01, 0x17, 0x00
+  };
+  uint8 res;
+
+  res = mraa_uart_write(uart, cmd_str_wakeup, sizeof(cmd_str_wakeup));
+  LOG("Wakeup res - %d\n", res);
+  sleep_ms(100);
 }
 
 void PN532_Test(void)
@@ -529,21 +538,12 @@ void PN532_Init(void)
   }
   mraa_uart_set_baudrate(uart, UART_BAUDRATE);
   mraa_uart_set_mode(uart, 8, MRAA_UART_PARITY_NONE, 1);
-
-  uint8_t cmd_str_wakeup[] =
-  {
-    0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD4, 0x14, 0x01, 0x17, 0x00
-  };
-  res = mraa_uart_write(uart, cmd_str_wakeup, sizeof(cmd_str_wakeup));
-  LOG("Wakeup res - %d\n", res);
-  sleep_ms(100);
 }
 
 int main(void)
 {
   PN532_Init();
-
+  PN532_WakeUp();
   while (1) {
     PN532_Test();
     sleep(2);
