@@ -623,6 +623,24 @@ uint8 PN532_InAutoPoll(void)
   return PN532_GOOD;
 }
 
+uint8 PN532_ReadMifare(void)
+{
+  uint8 res = 0;
+  uint8 cmdData[] = { 0x01, 0x30, 0x00 };
+
+  res = PN532_SendCmd(PN532_CMD_INDATAEXCHANGE, cmdData, sizeof(cmdData), 0);
+  LOG("%s res - %d\n", __FUNCTION__, res);
+  sleep_ms(50);
+
+  res = PN532_ReadAck();
+  sleep_ms(5);
+  res = PN532_ReadRsp(resp_buf);
+  res = PN532_FrameParser(resp_buf, res, NULL, NULL);
+  // Check ACK and Response Frame
+  // TODO
+
+  return PN532_GOOD;
+}
 
 void PN532_Test(void)
 {
@@ -633,6 +651,8 @@ void PN532_Test(void)
 
   res = PN532_InListPassiveTarget(&cmd, &resp);
   LOG("InLstPasTg: 0x%02x\r\n", res);
+  res = PN532_ReadMifare();
+  LOG("ReadMifare: 0x%02x\r\n", res);
 
   sleep_ms(100);
 }
