@@ -41,12 +41,24 @@ static uint8 sWaitAck = 0;          // Flag set after sending cmd, send ACK on t
 
 static uint8 PN532_ACK_FRAME[] = { 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00 };
 
+static uint8 resp_buf[256];
+
 static sleep_ms(int ms) {
   struct timeval tv;
 
   tv.tv_sec = ms / 1000;
   tv.tv_usec = (ms % 1000) * 1000;
   select(0, NULL, NULL, NULL, &tv);
+}
+
+static void dump(uint8 *buf, int len)
+{
+  uint8 i;
+
+  for (i = 0; i < len; i++) {
+    LOG("%02x ", *(buf + i));
+  }
+  LOG("\r\n");
 }
 
 uint8 PN532_Write(uint8 *data, uint8 len)
@@ -201,6 +213,7 @@ int8 PN532_ReadRsp(uint8 *pResp)
 
   res = mraa_uart_read(uart, pResp, PN532_DATABUF_MAX);
 
+  LOG("ReadRsp: 0x%02x\r\n", res);
 #if DEBUG_PN532_BYTE
   LOG("R - %02d - 0x", res);
   for (i = 0; i < res; i++) {
@@ -499,14 +512,19 @@ uint8 PN532_WakeUp(void)
   uint8 res = 0;
   const uint8_t cmd_arr[] =
   {
-    0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD4, 0x14, 0x01, 0x17, 0x00
+    0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0xFF,
+    0x03, 0xFD,
+    0xD4, 0x14, 0x01, 0x17, 0x00
   };
 
   res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
   LOG("%s res - %d\n", __FUNCTION__, res);
   sleep_ms(100);
 
+  res = PN532_ReadAck();
+  sleep_ms(5);
+  res = PN532_ReadRsp(resp_buf);
   // Check ACK and Response Frame
   // TODO
 
@@ -535,8 +553,11 @@ uint8 PN532_SAMConfig(void)
 
   res = mraa_uart_write(uart, cmd_arr, sizeof(cmd_arr));
   LOG("%s res - %d\n", __FUNCTION__, res);
-  sleep_ms(50);
+  sleep_ms(100);
 
+  res = PN532_ReadAck();
+  sleep_ms(5);
+  res = PN532_ReadRsp(resp_buf);
   // Check ACK and Response Frame
   // TODO
 
@@ -564,6 +585,9 @@ uint8 PN532_ActiveTarget(void)
   LOG("%s res - %d\n", __FUNCTION__, res);
   sleep_ms(50);
 
+  res = PN532_ReadAck();
+  sleep_ms(5);
+  res = PN532_ReadRsp(resp_buf);
   // Check ACK and Response Frame
   // TODO
 
@@ -590,6 +614,9 @@ uint8 PN532_InAutoPoll(void)
   LOG("%s res - %d\n", __FUNCTION__, res);
   sleep_ms(50);
 
+  res = PN532_ReadAck();
+  sleep_ms(5);
+  res = PN532_ReadRsp(resp_buf);
   // Check ACK and Response Frame
   // TODO
 
@@ -632,17 +659,20 @@ int main(void)
 
   PN532_Init();
 
+  // LowVbat -> Standby
   PN532_WakeUp();
   PN532_SAMConfig();
+#if 0
   PN532_ActiveTarget();
   PN532_InAutoPoll();
+#endif
 
   res = PN532_GetFirmwareVersion(&fwVer);
   LOG("Get_FW_Ver: 0x%02x\r\n", res);
 
   while (1) {
     PN532_Test();
-    sleep(2);
+    sleep(1);
   }
   return 0;
 }
