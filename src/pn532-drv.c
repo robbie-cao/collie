@@ -638,6 +638,13 @@ uint8 PN532_ReadMifare(void)
   res = PN532_FrameParser(resp_buf, res, NULL, NULL);
   // Check ACK and Response Frame
   // TODO
+#if 1
+  if (resp_buf[5] == 0xd5 && resp_buf[6] == 0x41) {
+    printf("Card dtected!\n");
+    // Play a voice for test
+    system("madplay /root/d.mp3");
+  }
+#endif
 
   return PN532_GOOD;
 }
