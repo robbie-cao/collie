@@ -674,8 +674,23 @@ uint8 PN532_WakeUp(void)
  * Timeout : Only valid for Mode = 02
  * IRQ     : 00 - Disable, 01 - Enable
  */
-uint8 PN532_SAMConfig(void)
+uint8 PN532_SAMConfig(uint8 mode, uint8 timeout, uint8 irq)
 {
+  uint8 res = 0;
+  uint8_t cmd_arr[3];
+  uint8 data[8];
+  uint8 len = 0;
+
+  LOG("## SAMConfig\r\n");
+  cmd_arr[0] = mode;
+  cmd_arr[1] = timeout;
+  cmd_arr[2] = irq;
+  res = PN532_Transaction(PN532_CMD_SAMCONFIGURATION, cmd_arr, sizeof(cmd_arr), data, &len);
+  if (len != 1) {
+    return PN532_INVALID_RESP;
+  }
+#if 1
+#else
   uint8 res = 0;
   const uint8_t cmd_arr[] =
   {
@@ -694,6 +709,7 @@ uint8 PN532_SAMConfig(void)
   res = PN532_ReadRsp(resp_buf);
   // Check ACK and Response Frame
   // TODO
+#endif
 
   return PN532_GOOD;
 }
@@ -858,8 +874,8 @@ int main(void)
   PN532_Init();
 
   // LowVbat -> Standby
-  PN532_WakeUp();
-  PN532_SAMConfig();
+  ///PN532_WakeUp();
+  PN532_SAMConfig(0x01, 0, 0);
 #if 0
   PN532_ActiveTarget();
   PN532_InAutoPoll();
