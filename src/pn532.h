@@ -261,7 +261,7 @@ typedef struct {
 typedef struct {
   uint8 maxTg;
   uint8 brTy;
-  uint8 *initData;
+  uint8 initData[32];
   uint8 dataLen;
 } PN532_InListPassiveTarget_Cmd_t;
 
@@ -270,8 +270,7 @@ typedef struct {
 // +----+----+------+----------------+----------------+
 typedef struct {
   uint8 nbTg;
-  uint8 brTy;
-  uint8 *tgtData;
+  uint8 tgtData[32];
   uint8 dataLen;
 } PN532_InListPassiveTarget_Resp_t;
 
