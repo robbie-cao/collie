@@ -11,7 +11,8 @@
 #define DEBUG_PN532_BYTE    1
 #define DEBUG_PN532_PACKET  1
 
-#define PN532_DATABUF_MAX   32
+#define PN532_CMDBUF_MAX    32
+#define PN532_RSPBUF_MAX    64
 
 #define PN532_ACK_PACKET_LEN   6
 
@@ -34,9 +35,12 @@
 #define UART_PORT           1
 #define UART_BAUDRATE       115200
 
+#define UART_DEV            "/dev/ttyS1"
+
 static mraa_uart_context uart;
 
-static uint8 sDataBuf[PN532_DATABUF_MAX];
+static uint8 sCmdBuf[PN532_CMDBUF_MAX];
+static uint8 sRspBuf[PN532_CMDBUF_MAX];
 static uint8 sWaitAck = 0;          // Flag set after sending cmd, send ACK on the coming IRQ from PN532
 
 static const uint8 PN532_ACK_FRAME[]  = { 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00 };
@@ -111,7 +115,7 @@ uint8 PN532_Read(uint8 *data, uint8 len)
  * +-----+-----+-----------+
  * | TFI | PD0 | PD1...PDn |
  * +-----+-----+-----------+
- * | D4  | cmd | cmd data  |
+ * | D4  | CMD | CMD DATA  |
  * +-----+-----+-----------+
  */
 uint8 PN532_SendCmd(uint8 cmd, uint8 *pCmdData, uint8 dataLen, uint8 waitAck)
@@ -125,28 +129,28 @@ uint8 PN532_SendCmd(uint8 cmd, uint8 *pCmdData, uint8 dataLen, uint8 waitAck)
     return PN532_INVALID_PARAM;
   }
 
-  sDataBuf[idx++] = PN532_PREAMBLE;
-  sDataBuf[idx++] = PN532_STARTCODE_0;
-  sDataBuf[idx++] = PN532_STARTCODE_1;
-  sDataBuf[idx++] = dataLen + 2;         // Length of (TFI, PD0...PDn)
-  sDataBuf[idx++] = ~(dataLen + 2) + 1;  // Length Checksum
-  sDataBuf[idx++] = PN532_TFI_HOST2PN;   // Frame Identifier
-  sDataBuf[idx++] = cmd;                 // PD0
+  sCmdBuf[idx++] = PN532_PREAMBLE;
+  sCmdBuf[idx++] = PN532_STARTCODE_0;
+  sCmdBuf[idx++] = PN532_STARTCODE_1;
+  sCmdBuf[idx++] = dataLen + 2;         // Length of (TFI, PD0...PDn)
+  sCmdBuf[idx++] = ~(dataLen + 2) + 1;  // Length Checksum
+  sCmdBuf[idx++] = PN532_TFI_HOST2PN;   // Frame Identifier
+  sCmdBuf[idx++] = cmd;                 // PD0
 
   sum = PN532_TFI_HOST2PN + cmd;
   // PD1...PDn (Optional Input Data)
   for (i = 0; i < dataLen; i++) {
-    sDataBuf[idx++] = pCmdData[i];
+    sCmdBuf[idx++] = pCmdData[i];
     sum += pCmdData[i];
   }
-  sDataBuf[idx++] = (~sum) + 1;          // Data Checksum
-  sDataBuf[idx++] = PN532_POSTAMBLE;
+  sCmdBuf[idx++] = (~sum) + 1;          // Data Checksum
+  sCmdBuf[idx++] = PN532_POSTAMBLE;
 
-  res = mraa_uart_write(uart, sDataBuf, idx);
+  res = mraa_uart_write(uart, sCmdBuf, idx);
 #if DEBUG_PN532_BYTE
   LOG("W - %02d - 0x", res);
   for (i = 0; i < idx; i++) {
-    LOG("%02x ", *(sDataBuf + i));
+    LOG("%02x ", *(sCmdBuf + i));
   }
   LOG("\r\n");
 #endif
@@ -187,17 +191,17 @@ int8 PN532_ReadAck(void)
   uint8 res = PN532_BUS_BUSY;
   uint8 i = 0;
 
-  res = mraa_uart_read(uart, sDataBuf, PN532_ACK_PACKET_LEN);
+  res = mraa_uart_read(uart, sRspBuf, PN532_ACK_PACKET_LEN);
 
 #if DEBUG_PN532_BYTE
   LOG("R - %02d - 0x", res);
   for (i = 0; i < res; i++) {
-    LOG("%02x ", *(sDataBuf + i));
+    LOG("%02x ", *(sRspBuf + i));
   }
   LOG("\r\n");
 #endif
 
-  res = PN532_FrameParser(sDataBuf, res, NULL, NULL);
+  res = PN532_FrameParser(sRspBuf, res, NULL, NULL);
 
   LOG("ReadAck: 0x%02x - %s\r\n", res, !res ? "ACK" : "NACK");
   if (res == PN532_TFI_ACK) {
@@ -222,7 +226,7 @@ int8 PN532_ReadRsp(uint8 *pResp)
     return PN532_INVALID_PARAM;
   }
 
-  res = mraa_uart_read(uart, pResp, PN532_DATABUF_MAX);
+  res = mraa_uart_read(uart, pResp, PN532_RSPBUF_MAX);
 
   LOG("ReadRsp: 0x%02x\r\n", res);
 #if DEBUG_PN532_BYTE
@@ -302,15 +306,15 @@ uint8 PN532_GetFirmwareVersion(PN532_FirmwareVersion_t *pVer)
   sleep_ms(100);
 
   LOG("## ReadRsp\r\n");
-  memset(sDataBuf, 0, sizeof(sDataBuf));    // Clean buffer for sure
-  res = PN532_ReadRsp(sDataBuf);
+  memset(sRspBuf, 0, sizeof(sRspBuf));    // Clean buffer for sure
+  res = PN532_ReadRsp(sRspBuf);
   if (res <= 0) {
     return PN532_ERR;
   }
 
   LOG("## Decode RspFrame\r\n");
   // Decode response frame
-  tfi = PN532_FrameParser(sDataBuf, res, (void **)&pPacket, &len);
+  tfi = PN532_FrameParser(sRspBuf, res, (void **)&pPacket, &len);
   if (tfi != PN532_TFI_PN2HOST) {
     return PN532_INVALID_FRAME;
   }
@@ -387,14 +391,14 @@ uint8 PN532_InListPassiveTarget(PN532_InListPassiveTarget_Cmd_t *pCmd, PN532_InL
 
   sleep_ms(50);                             // FIXME: necessary for POLL? No need for IRQ
 
-  memset(sDataBuf, 0, sizeof(sDataBuf));    // Clean buffer for sure
-  res = PN532_ReadRsp(sDataBuf);
+  memset(sRspBuf, 0, sizeof(sRspBuf));    // Clean buffer for sure
+  res = PN532_ReadRsp(sRspBuf);
   if (res <= 0) {
     return PN532_ERR;
   }
 
   // Decode response frame
-  tfi = PN532_FrameParser(sDataBuf, res, (void **)&pPacket, &len);
+  tfi = PN532_FrameParser(sRspBuf, res, (void **)&pPacket, &len);
   if (tfi != PN532_TFI_PN2HOST) {
     return PN532_INVALID_FRAME;
   }
@@ -526,7 +530,7 @@ uint8 PN532_FrameParser(const uint8 *pFrame, uint8 frmLen, void **ppPacket, uint
   // Length and Checksum
   len = p[3];
   if (!len
-      || len > PN532_DATABUF_MAX    // FIXME: PN532 support 255 as MAX. Extra limitation here!
+      || len > PN532_RSPBUF_MAX    // FIXME: PN532 support 255 as MAX. Extra limitation here!
      ) {
     DD();
     return PN532_INVALID_FRAME;
