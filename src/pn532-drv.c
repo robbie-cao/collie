@@ -39,7 +39,8 @@ static mraa_uart_context uart;
 static uint8 sDataBuf[PN532_DATABUF_MAX];
 static uint8 sWaitAck = 0;          // Flag set after sending cmd, send ACK on the coming IRQ from PN532
 
-static uint8 PN532_ACK_FRAME[] = { 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00 };
+static const uint8 PN532_ACK_FRAME[]  = { 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00 };
+static const uint8 PN532_NACK_FRAME[] = { 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00 };
 
 static uint8 resp_buf[256];
 
@@ -161,6 +162,16 @@ uint8 PN532_SendAck(void)
   uint8 len = sizeof(PN532_ACK_FRAME);
 
   res = mraa_uart_write(uart, PN532_ACK_FRAME, len);
+
+  return (res == len ? PN532_GOOD : PN532_BUS_BUSY);
+}
+
+uint8 PN532_SendNack(void)
+{
+  uint8 res = PN532_BUS_BUSY;
+  uint8 len = sizeof(PN532_NACK_FRAME);
+
+  res = mraa_uart_write(uart, PN532_NACK_FRAME, len);
 
   return (res == len ? PN532_GOOD : PN532_BUS_BUSY);
 }

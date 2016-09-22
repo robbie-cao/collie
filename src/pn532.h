@@ -303,6 +303,7 @@ uint8 PN532_Read(uint8 *data, uint8 len);
 
 uint8 PN532_SendCmd(uint8 cmd, uint8 *pCmdData, uint8 dataLen, uint8 waitAck);
 uint8 PN532_SendAck(void);
+uint8 PN532_SendNack(void);
 int8  PN532_ReadAck(void);
 int8  PN532_ReadRsp(uint8 *pResp);
 uint8 PN532_RespHandler(void);
