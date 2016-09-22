@@ -274,6 +274,27 @@ typedef struct {
   uint8 dataLen;
 } PN532_InListPassiveTarget_Resp_t;
 
+// +----+---------------+--------------+----------------+---------------+-----------+
+// | Tg | SENS_RES (2B) | SEL_RES (1B) | NFCID Len (1B) | NFCID[] (Len) | [ ATS[] ] |
+// +----+---------------+--------------+----------------+---------------+-----------+
+//
+// Byte 1 of SENS_RES
+// b8 b7 b6 b5 b4 b3 b2 b1 Meaning
+// 0  0                    NFCID1 size: single (4 bytes)
+// 0  1                    NFCID1 size: double (7 bytes)
+// 1  0                    NFCID1 size: triple (10 bytes)
+// 1  1                    RFU
+//
+// Example
+// 01 00 04 08 04 6a 8d c7 bd
+typedef struct {
+  uint8 tg;
+  uint8 sens_res[2];
+  uint8 sel_res;
+  uint8 nfcid_len;
+  uint8 nfcid[10];
+} PN532_InListPassiveTarget_Resp_106A_t;
+
 /*============================================================================
  * Prototypes
  */

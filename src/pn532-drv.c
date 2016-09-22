@@ -405,21 +405,47 @@ uint8 PN532_InListPassiveTarget(PN532_InListPassiveTarget_Cmd_t *pCmd, PN532_InL
   }
   LOG("\r\n");
 #endif
-  if (tfi != PN532_TFI_ACK) {
-    return PN532_ERR;
-  }
-#if 0
-  // TODO
   // Copy response data to output
   if (!pResp) {
     return PN532_INVALID_PARAM;
   }
-  pResp->nbTg = pPacket[0];
-  for (i = 1; i < len; i++) {
-     pResp->tgtData[i - 1] = *(pPacket + i);
+  pResp->nbTg = pPacket[1];
+  for (i = 2; i < len; i++) {
+     pResp->tgtData[i - 2] = *(pPacket + i);
   }
-  pResp->dataLen = len - 1;
-#endif
+  pResp->dataLen = len - 2;
+
+  return PN532_GOOD;
+}
+
+uint8 PN532_InListPassiveTarget_ParseResp(PN532_InListPassiveTarget_Resp_t *pResp, PN532_InListPassiveTarget_Resp_106A_t *pData)
+{
+  // Currently support 1 passive target ONLY
+  // And support 106k type A ONLY
+
+  uint8 i = 0;
+
+  if (!pResp || !pData) {
+    return PN532_INVALID_PARAM;
+  }
+
+  if (pResp->nbTg == 0) {
+    return PN532_GOOD;
+  }
+
+  pData->tg = pResp->tgtData[0];
+  pData->sens_res[0] = pResp->tgtData[1];
+  pData->sens_res[1] = pResp->tgtData[2];
+  pData->sel_res = pResp->tgtData[3];
+  pData->nfcid_len = pResp->tgtData[4];
+  LOG("Tg      : %02x\n", pData->tg);
+  LOG("SENS_RES: %02x %02x\n", pData->sens_res[0], pData->sens_res[1]);
+  LOG("SEL_RES : %02x\n", pData->sel_res);
+  LOG("IdLen   : %02x\n", pData->nfcid_len);
+
+  for (i = 0; i < pData->nfcid_len; i++) {
+    pData->nfcid[i] = pResp->tgtData[5 + i];
+  }
 
   return PN532_GOOD;
 }
@@ -643,13 +669,26 @@ uint8 PN532_InAutoPoll(void)
   return PN532_GOOD;
 }
 
-uint8 PN532_ReadMifare(void)
+uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
 {
+  uint8 i, idx = 0;
   uint8 res = 0;
-  uint8 cmdData[] = { 0x01, 0x30, 0x00 };
+  uint8 cmdData[16];
+  uint8 cmdlen;
+  uint8 addr = 0x02;
 
-  res = PN532_SendCmd(PN532_CMD_INDATAEXCHANGE, cmdData, sizeof(cmdData), 0);
-  LOG("%s res - %d\n", __FUNCTION__, res);
+  // authentication
+  idx = 0;
+  cmdData[idx++] = pTgt->tg;
+  cmdData[idx++] = 0x60;
+  cmdData[idx++] = addr;
+  for (i = 0; i < 6; i++) {
+    cmdData[idx++] = 0xFF;
+  }
+  for (i = 0; i < pTgt->nfcid_len; i++) {
+    cmdData[idx++] = pTgt->nfcid[i];
+  }
+  res = PN532_SendCmd(PN532_CMD_INDATAEXCHANGE, cmdData, idx, 0);
   sleep_ms(50);
 
   res = PN532_ReadAck();
@@ -658,7 +697,21 @@ uint8 PN532_ReadMifare(void)
   res = PN532_FrameParser(resp_buf, res, NULL, NULL);
   // Check ACK and Response Frame
   // TODO
-#if 1
+
+  // read 16 types from addr
+  cmdData[0] = pTgt->tg;
+  cmdData[1] = 0x30;
+  cmdData[2] = addr;
+  res = PN532_SendCmd(PN532_CMD_INDATAEXCHANGE, cmdData, 3, 0);
+  sleep_ms(50);
+
+  res = PN532_ReadAck();
+  sleep_ms(5);
+  res = PN532_ReadRsp(resp_buf);
+  res = PN532_FrameParser(resp_buf, res, NULL, NULL);
+  // Check ACK and Response Frame
+  // TODO
+#if 0
   if (resp_buf[5] == 0xd5 && resp_buf[6] == 0x41) {
     printf("Card dtected!\n");
     // Play a voice for test
@@ -672,15 +725,25 @@ uint8 PN532_ReadMifare(void)
 void PN532_Test(void)
 {
   uint8 res = 0;
-  uint8 buf[8];
-  PN532_InListPassiveTarget_Cmd_t cmd = { 0x01, 0x00, NULL, 0 };
-  PN532_InListPassiveTarget_Resp_t resp = { 0x00, 0x00, buf, 0 };
+  uint8 data[16];
+  PN532_InListPassiveTarget_Cmd_t cmd = { 0x01, 0x00, {}, 0 };
+  PN532_InListPassiveTarget_Resp_t resp = { 0x00, {}, 0 };
+  PN532_InListPassiveTarget_Resp_106A_t resp160a;
 
   res = PN532_InListPassiveTarget(&cmd, &resp);
   LOG("InLstPasTg: 0x%02x\r\n", res);
-  res = PN532_ReadMifare();
+  if (res != PN532_GOOD) {
+    return ;
+  }
+  if (!resp.nbTg) {
+    LOG("Not found card!\n");
+    return ;
+  }
+  res = PN532_InListPassiveTarget_ParseResp(&resp, &resp160a);
+  res = PN532_ReadMifare(&resp160a, data);
   LOG("ReadMifare: 0x%02x\r\n", res);
 
+done:
   sleep_ms(100);
 }
 
