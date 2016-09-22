@@ -273,6 +273,55 @@ int8 PN532_ReadRsp(uint8 *pResp)
  * \endcode
  */
 
+uint8 PN532_Transaction(uint8 cmd, uint8 *pCmdData, uint8 cmdDataLen, uint8 *pRspData, uint8 *rspDataLen)
+{
+  int8 res = PN532_GOOD;
+  uint8 i = 0;
+  uint8 tfi = 0;
+  uint8 len = 0;
+  uint8 *pPacket = NULL;
+  uint8 retry = 3;
+
+  LOG("## SendCmd\r\n");
+  res = PN532_SendCmd(cmd, pCmdData, cmdDataLen, 0);
+  if (res != PN532_GOOD) {
+    return res;
+  }
+
+  LOG("## ReadAck\r\n");
+  if (PN532_ReadAck() != PN532_ACK) {
+    return PN532_INVALID_ACK;
+  }
+
+  LOG("## ReadRsp\r\n");
+  memset(sRspBuf, 0, sizeof(sRspBuf));    // Clean buffer for sure
+  res = PN532_ReadRsp(sRspBuf);
+  if (res <= 0) {
+    return PN532_ERR;
+  }
+
+  LOG("## Decode RspFrame\r\n");
+  // Decode response frame
+  tfi = PN532_FrameParser(sRspBuf, res, (void **)&pPacket, &len);
+  if (tfi != PN532_TFI_PN2HOST) {
+    return PN532_INVALID_RESP;
+  }
+  if (!pPacket
+      || pPacket[0] != cmd + 1
+      ) {
+    return PN532_INVALID_RESP;
+  }
+  if (!pRspData || !rspDataLen) {
+    return PN532_INVALID_PARAM;
+  }
+  for (i = 0; i < len; i++) {
+    pRspData[i] = pPacket[i];
+  }
+  *rspDataLen = len;
+
+  return PN532_GOOD;
+}
+
 /**
  * Input:
  * +----+----+
