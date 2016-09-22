@@ -14,7 +14,10 @@
 #define PN532_CMDBUF_MAX    32
 #define PN532_RSPBUF_MAX    64
 
-#define PN532_ACK_PACKET_LEN   6
+#define PN532_ACK_PACKET_LEN        6
+
+#define PN532_MAX_RESPONSE_TIME     15 // ms
+#define PN532_MAX_PROCESS_TIME      100 // ms
 
 #define LOG_LEVEL_SYMBOL_VERBOSE        "V"
 #define LOG_LEVEL_SYMBOL_INFO           "I"
@@ -34,8 +37,6 @@
 
 #define UART_PORT           1
 #define UART_BAUDRATE       115200
-
-#define UART_DEV            "/dev/ttyS1"
 
 static mraa_uart_context uart;
 
@@ -289,11 +290,17 @@ uint8 PN532_Transaction(uint8 cmd, uint8 *pCmdData, uint8 cmdDataLen, uint8 *pRs
   }
 
   LOG("## ReadAck\r\n");
+  if (!mraa_uart_data_available(uart, PN532_MAX_RESPONSE_TIME)) {
+    return PN532_TIMEOUT;
+  }
   if (PN532_ReadAck() != PN532_ACK) {
     return PN532_INVALID_ACK;
   }
 
   LOG("## ReadRsp\r\n");
+  if (!mraa_uart_data_available(uart, PN532_MAX_PROCESS_TIME)) {
+    return PN532_TIMEOUT;
+  }
   memset(sRspBuf, 0, sizeof(sRspBuf));    // Clean buffer for sure
   res = PN532_ReadRsp(sRspBuf);
   if (res <= 0) {
@@ -334,6 +341,21 @@ uint8 PN532_Transaction(uint8 cmd, uint8 *pCmdData, uint8 cmdDataLen, uint8 *pRs
  */
 uint8 PN532_GetFirmwareVersion(PN532_FirmwareVersion_t *pVer)
 {
+#if 1
+  LOG("## GetFirmwareVersion\r\n");
+  int8 res = PN532_GOOD;
+  uint8 data[8];
+  uint8 len;
+
+  res = PN532_Transaction(PN532_CMD_GETFIRMWAREVERSION, NULL, 0, data, &len);
+  if (len != sizeof(PN532_FirmwareVersion_t) + 1) {
+    return PN532_INVALID_RESP;
+  }
+  pVer->ic      = data[1];
+  pVer->ver     = data[2];
+  pVer->rev     = data[3];
+  pVer->support = data[4];
+#else
   int8 res = PN532_BUS_BUSY;
   uint8 tfi = 0;
   uint8 len = 0;
@@ -382,13 +404,15 @@ uint8 PN532_GetFirmwareVersion(PN532_FirmwareVersion_t *pVer)
   pVer->ver     = pPacket[2];
   pVer->rev     = pPacket[3];
   pVer->support = pPacket[4];
+#endif
 
 #if DEBUG_PN532_PACKET
-  LOG("IC : %02x\r\n", pPacket[1]);
-  LOG("VER: %02x\r\n", pPacket[2]);
-  LOG("REV: %02x\r\n", pPacket[3]);
-  LOG("SUP: %02x\r\n", pPacket[4]);
+  LOG("IC : %02x\r\n", pVer->ic);
+  LOG("VER: %02x\r\n", pVer->ver);
+  LOG("REV: %02x\r\n", pVer->rev);
+  LOG("SUP: %02x\r\n", pVer->support);
 #endif
+
 
   return PN532_GOOD;
 }
