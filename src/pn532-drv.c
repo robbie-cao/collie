@@ -865,8 +865,18 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
             sRspBuf[14]
             );
         system(str);
-        LOG("%s\n", str);
-        system("madplay /root/s/2.mp3 -o wave:- | aplay -D plug:dmix");
+        //system("madplay /root/s/2.mp3 -o wave:- | aplay -D plug:dmix");
+        {
+        uint8_t on_off = 0;
+        mraa_gpio_context led_gpio;
+
+        led_gpio = mraa_gpio_init(18);  // 18 -> LED_PIN_STATUS
+        on_off = mraa_gpio_read(led_gpio);
+        system("ubus call mua.miod.service status_led_blink {}");
+        system("madplay /root/d.mp3");
+        system("ubus call mua.miod.service status_led_off {}");
+        mraa_gpio_write(led_gpio, on_off);
+        }
         break;
       case 'P':
         // Play a random voice on sd card
