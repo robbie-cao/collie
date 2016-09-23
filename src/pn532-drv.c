@@ -12,7 +12,7 @@
 #define DEBUG_PN532_PACKET  1
 
 #define PN532_CMDBUF_MAX    32
-#define PN532_RSPBUF_MAX    64
+#define PN532_RSPBUF_MAX    256
 
 #define PN532_ACK_PACKET_LEN        6
 
@@ -45,13 +45,12 @@
 static mraa_uart_context uart;
 
 static uint8 sCmdBuf[PN532_CMDBUF_MAX];
-static uint8 sRspBuf[PN532_CMDBUF_MAX];
+static uint8 sRspBuf[PN532_RSPBUF_MAX];
 static uint8 sWaitAck = 0;          // Flag set after sending cmd, send ACK on the coming IRQ from PN532
 
 static const uint8 PN532_ACK_FRAME[]  = { 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00 };
 static const uint8 PN532_NACK_FRAME[] = { 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00 };
 
-static uint8 resp_buf[256];
 
 static sleep_ms(int ms) {
   struct timeval tv;
@@ -698,7 +697,7 @@ uint8 PN532_WakeUp(void)
 
   res = PN532_ReadAck();
   sleep_ms(5);
-  res = PN532_ReadRsp(resp_buf);
+  res = PN532_ReadRsp(sRspBuf);
   // Check ACK and Response Frame
   // TODO
 
@@ -746,7 +745,7 @@ uint8 PN532_SAMConfig(uint8 mode, uint8 timeout, uint8 irq)
 
   res = PN532_ReadAck();
   sleep_ms(5);
-  res = PN532_ReadRsp(resp_buf);
+  res = PN532_ReadRsp(sRspBuf);
   // Check ACK and Response Frame
   // TODO
 #endif
@@ -777,7 +776,7 @@ uint8 PN532_ActiveTarget(void)
 
   res = PN532_ReadAck();
   sleep_ms(5);
-  res = PN532_ReadRsp(resp_buf);
+  res = PN532_ReadRsp(sRspBuf);
   // Check ACK and Response Frame
   // TODO
 
@@ -806,7 +805,7 @@ uint8 PN532_InAutoPoll(void)
 
   res = PN532_ReadAck();
   sleep_ms(5);
-  res = PN532_ReadRsp(resp_buf);
+  res = PN532_ReadRsp(sRspBuf);
   // Check ACK and Response Frame
   // TODO
 
@@ -837,8 +836,8 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
 
   res = PN532_ReadAck();
   sleep_ms(5);
-  res = PN532_ReadRsp(resp_buf);
-  res = PN532_FrameParser(resp_buf, res, NULL, NULL);
+  res = PN532_ReadRsp(sRspBuf);
+  res = PN532_FrameParser(sRspBuf, res, NULL, NULL);
   // Check ACK and Response Frame
   // TODO
 
@@ -851,12 +850,12 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
 
   res = PN532_ReadAck();
   sleep_ms(5);
-  res = PN532_ReadRsp(resp_buf);
-  res = PN532_FrameParser(resp_buf, res, NULL, NULL);
+  res = PN532_ReadRsp(sRspBuf);
+  res = PN532_FrameParser(sRspBuf, res, NULL, NULL);
   // Check ACK and Response Frame
   // TODO
 #if 0
-  if (resp_buf[5] == 0xd5 && resp_buf[6] == 0x41) {
+  if (sRspBuf[5] == 0xd5 && sRspBuf[6] == 0x41) {
     printf("Card dtected!\n");
     // Play a voice for test
     system("madplay /root/d.mp3");
