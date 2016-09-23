@@ -21,22 +21,6 @@
 #define PN532_MAX_RESPONSE_TIME     30 // ms
 #define PN532_MAX_PROCESS_TIME      100 // ms
 
-#define LOG_LEVEL_SYMBOL_VERBOSE        "V"
-#define LOG_LEVEL_SYMBOL_INFO           "I"
-#define LOG_LEVEL_SYMBOL_DEBUG          "D"
-#define LOG_LEVEL_SYMBOL_WARN           "W"
-#define LOG_LEVEL_SYMBOL_ERROR          "E"
-
-#define LOG(fmt, arg...)                printf(fmt, ##arg)
-#define LOGV(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_VERBOSE ## "\t" ## tag ## "\t" fmt, ## arg)
-#define LOGI(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_INFO    ## "\t" ## tag ## "\t" fmt, ## arg)
-#define LOGD(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_DEBUG   ## "\t" ## tag ## "\t" fmt, ## arg)
-#define LOGW(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_WARN    ## "\t" ## tag ## "\t" fmt, ## arg)
-#define LOGE(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_ERROR   ## "\t" ## tag ## "\t" fmt, ## arg)
-
-#define D(fmt, arg...)                  printf("Line %d:\t" fmt, __LINE__, ##arg)
-#define DD()                            printf("Line %d, %s\n", __LINE__, __FUNCTION__)
-
 #define UART_PORT           1
 #define UART_BAUDRATE       115200
 
@@ -1004,47 +988,6 @@ void PN532_Init(void)
   }
   mraa_uart_set_baudrate(uart, UART_BAUDRATE);
   mraa_uart_set_mode(uart, 8, MRAA_UART_PARITY_NONE, 1);
-}
-
-int main(void)
-{
-  uint8 res = 0;
-  PN532_FirmwareVersion_t fwVer;
-
-  PN532_Init();
-
-  // LowVbat -> Standby
-  PN532_WakeUp();
-  sleep_ms(100);
-  PN532_WakeUp();       // twice for sure
-  sleep_ms(100);
-  PN532_SAMConfig(0x01, 0, 0);
-#if 0
-  PN532_ActiveTarget();
-  PN532_InAutoPoll();
-#endif
-  sleep_ms(100);
-
-  res = PN532_GetFirmwareVersion(&fwVer);
-  LOG("PN532_GetFirmwareVersion: 0x%02x\r\n", res);
-
-  while (1) {
-#if CHECK_AVAILABILITY
-    uint8 found = 0;
-    uint8 tgtData[16];
-    uint8 len = 0;
-
-    res = PN532_InListPassiveTarget(0x01, 0x00, &found, tgtData, &len);
-    LOG("PN532_InListPassiveTarget: 0x%02x\r\n", res);
-    if (res != PN532_GOOD) {
-      PN532_SendAck();
-    }
-#else
-    PN532_Test();
-#endif
-    sleep(1);
-  }
-  return 0;
 }
 
 /* vim: set ts=2 sw=2 tw=0 list : */

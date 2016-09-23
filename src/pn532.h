@@ -295,6 +295,22 @@ typedef struct {
   uint8 nfcid[10];
 } PN532_InListPassiveTarget_Resp_106A_t;
 
+#define LOG_LEVEL_SYMBOL_VERBOSE        "V"
+#define LOG_LEVEL_SYMBOL_INFO           "I"
+#define LOG_LEVEL_SYMBOL_DEBUG          "D"
+#define LOG_LEVEL_SYMBOL_WARN           "W"
+#define LOG_LEVEL_SYMBOL_ERROR          "E"
+
+#define LOG(fmt, arg...)                printf(fmt, ##arg)
+#define LOGV(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_VERBOSE ## "\t" ## tag ## "\t" fmt, ## arg)
+#define LOGI(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_INFO    ## "\t" ## tag ## "\t" fmt, ## arg)
+#define LOGD(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_DEBUG   ## "\t" ## tag ## "\t" fmt, ## arg)
+#define LOGW(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_WARN    ## "\t" ## tag ## "\t" fmt, ## arg)
+#define LOGE(tag, fmt, arg...)          printf(LOG_LEVEL_SYMBOL_ERROR   ## "\t" ## tag ## "\t" fmt, ## arg)
+
+#define D(fmt, arg...)                  printf("Line %d:\t" fmt, __LINE__, ##arg)
+#define DD()                            printf("Line %d, %s\n", __LINE__, __FUNCTION__)
+
 /*============================================================================
  * Prototypes
  */
@@ -311,13 +327,15 @@ int8  PN532_ReadRsp(uint8 *pResp);
 uint8 PN532_RespHandler(void);
 uint8 PN532_FrameParser(const uint8 *pFrame, uint8 frmLen, void **ppPacket, uint8 *pLen);
 
+uint8 PN532_WakeUp(void);
+uint8 PN532_SAMConfig(uint8 mode, uint8 timeout, uint8 irq);
+
 uint8 PN532_GetFirmwareVersion(PN532_FirmwareVersion_t *pVer);
 uint8 PN532_InListPassiveTarget2(PN532_InListPassiveTarget_Cmd_t *pCmd, PN532_InListPassiveTarget_Resp_t *pResp);
 uint8 PN532_InListPassiveTarget(uint8 maxTg, uint8 brTy, uint8 *found, uint8 *pTgtData, uint8 *tgtDataLen);
 uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data);
 uint8 PN532_WriteMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data, uint8 dataLen);
 
-uint8 PN532_WakeUp(void);
 
 void PN532_Test(void);
 

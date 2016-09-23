@@ -19,7 +19,7 @@ btnd: button.o
 ledd: led.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
-nfcd: pn532-drv.o
+nfcd: pn532-drv.o nfcd.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 clean:
