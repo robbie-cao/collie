@@ -298,6 +298,8 @@ typedef struct {
 /*============================================================================
  * Prototypes
  */
+void sleep_ms(int ms);
+
 uint8 PN532_Write(uint8 *data, uint8 len);
 uint8 PN532_Read(uint8 *data, uint8 len);
 
@@ -312,6 +314,8 @@ uint8 PN532_FrameParser(const uint8 *pFrame, uint8 frmLen, void **ppPacket, uint
 uint8 PN532_GetFirmwareVersion(PN532_FirmwareVersion_t *pVer);
 uint8 PN532_InListPassiveTarget2(PN532_InListPassiveTarget_Cmd_t *pCmd, PN532_InListPassiveTarget_Resp_t *pResp);
 uint8 PN532_InListPassiveTarget(uint8 maxTg, uint8 brTy, uint8 *found, uint8 *pTgtData, uint8 *tgtDataLen);
+uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data);
+uint8 PN532_WriteMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data, uint8 dataLen);
 
 uint8 PN532_WakeUp(void);
 

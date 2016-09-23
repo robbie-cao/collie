@@ -52,7 +52,8 @@ static const uint8 PN532_ACK_FRAME[]  = { 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00 };
 static const uint8 PN532_NACK_FRAME[] = { 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00 };
 
 
-static sleep_ms(int ms) {
+void sleep_ms(int ms)
+{
   struct timeval tv;
 
   tv.tv_sec = ms / 1000;
@@ -1015,7 +1016,7 @@ int main(void)
   // LowVbat -> Standby
   PN532_WakeUp();
   sleep_ms(100);
-  PN532_WakeUp();
+  PN532_WakeUp();       // twice for sure
   sleep_ms(100);
   PN532_SAMConfig(0x01, 0, 0);
 #if 0
@@ -1028,7 +1029,7 @@ int main(void)
   LOG("PN532_GetFirmwareVersion: 0x%02x\r\n", res);
 
   while (1) {
-#if 0
+#if CHECK_AVAILABILITY
     uint8 found = 0;
     uint8 tgtData[16];
     uint8 len = 0;
