@@ -310,7 +310,8 @@ uint8 PN532_RespHandler(void);
 uint8 PN532_FrameParser(const uint8 *pFrame, uint8 frmLen, void **ppPacket, uint8 *pLen);
 
 uint8 PN532_GetFirmwareVersion(PN532_FirmwareVersion_t *pVer);
-uint8 PN532_InListPassiveTarget(PN532_InListPassiveTarget_Cmd_t *pCmd, PN532_InListPassiveTarget_Resp_t *pResp);
+uint8 PN532_InListPassiveTarget2(PN532_InListPassiveTarget_Cmd_t *pCmd, PN532_InListPassiveTarget_Resp_t *pResp);
+uint8 PN532_InListPassiveTarget(uint8 maxTg, uint8 brTy, uint8 *found, uint8 *pTgtData, uint8 *tgtDataLen);
 
 uint8 PN532_WakeUp(void);
 

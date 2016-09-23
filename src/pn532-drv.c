@@ -16,7 +16,9 @@
 
 #define PN532_ACK_PACKET_LEN        6
 
-#define PN532_MAX_RESPONSE_TIME     15 // ms
+// timing need to be fine tuned
+// TODO
+#define PN532_MAX_RESPONSE_TIME     30 // ms
 #define PN532_MAX_PROCESS_TIME      100 // ms
 
 #define LOG_LEVEL_SYMBOL_VERBOSE        "V"
@@ -37,6 +39,8 @@
 
 #define UART_PORT           1
 #define UART_BAUDRATE       115200
+
+#define CHECK_AVAILABILITY  0
 
 static mraa_uart_context uart;
 
@@ -283,31 +287,39 @@ uint8 PN532_Transaction(uint8 cmd, uint8 *pCmdData, uint8 cmdDataLen, uint8 *pRs
   uint8 *pPacket = NULL;
   uint8 retry = 3;
 
-  LOG("## SendCmd\r\n");
+  LOG("1# SendCmd\r\n");
   res = PN532_SendCmd(cmd, pCmdData, cmdDataLen, 0);
   if (res != PN532_GOOD) {
     return res;
   }
 
-  LOG("## ReadAck\r\n");
+  LOG("2# ReadAck\r\n");
+#if CHECK_AVAILABILITY
   if (!mraa_uart_data_available(uart, PN532_MAX_RESPONSE_TIME)) {
     return PN532_TIMEOUT;
   }
+#else
+  sleep_ms(PN532_MAX_RESPONSE_TIME);
+#endif
   if (PN532_ReadAck() != PN532_ACK) {
     return PN532_INVALID_ACK;
   }
 
-  LOG("## ReadRsp\r\n");
+  LOG("3# ReadRsp\r\n");
+#if CHECK_AVAILABILITY
   if (!mraa_uart_data_available(uart, PN532_MAX_PROCESS_TIME)) {
     return PN532_TIMEOUT;
   }
+#else
+  sleep_ms(100);
+#endif
   memset(sRspBuf, 0, sizeof(sRspBuf));    // Clean buffer for sure
   res = PN532_ReadRsp(sRspBuf);
   if (res <= 0) {
     return PN532_ERR;
   }
 
-  LOG("## Decode RspFrame\r\n");
+  LOG("4# Decode RspFrame\r\n");
   // Decode response frame
   tfi = PN532_FrameParser(sRspBuf, res, (void **)&pPacket, &len);
   if (tfi != PN532_TFI_PN2HOST) {
@@ -342,12 +354,15 @@ uint8 PN532_Transaction(uint8 cmd, uint8 *pCmdData, uint8 cmdDataLen, uint8 *pRs
 uint8 PN532_GetFirmwareVersion(PN532_FirmwareVersion_t *pVer)
 {
 #if 1
-  LOG("## GetFirmwareVersion\r\n");
   int8 res = PN532_GOOD;
   uint8 data[8];
-  uint8 len;
+  uint8 len = 0;
 
+  LOG("## GetFirmwareVersion\r\n");
   res = PN532_Transaction(PN532_CMD_GETFIRMWAREVERSION, NULL, 0, data, &len);
+  if (res != PN532_GOOD) {
+    return res;
+  }
   if (len != sizeof(PN532_FirmwareVersion_t) + 1) {
     return PN532_INVALID_RESP;
   }
@@ -421,6 +436,14 @@ uint8 PN532_GetFirmwareVersion(PN532_FirmwareVersion_t *pVer)
  * +----+----+-------+------+------------+
  * | D4 | 4A | MaxTg | BrTy | [InitData] |
  * +----+----+-------+------+------------+
+ *
+ *   BrTy is the baud rate and the modulation type to be used during the initialization
+ *   − 0x00 : 106 kbps type A (ISO/IEC14443 Type A),
+ *   − 0x01 : 212 kbps (FeliCa polling),
+ *   − 0x02 : 424 kbps (FeliCa polling),
+ *   − 0x03 : 106 kbps type B (ISO/IEC14443-3B),
+ *   − 0x04 : 106 kbps Innovision Jewel tag.
+ *
  * Output
  * +----+----+------+----------------+----------------+
  * | D5 | 4B | NbTg | [TgtData1 [] ] | [TgtData2 [] ] |
@@ -428,7 +451,32 @@ uint8 PN532_GetFirmwareVersion(PN532_FirmwareVersion_t *pVer)
  * Return
  * Success or Error
  */
-uint8 PN532_InListPassiveTarget(PN532_InListPassiveTarget_Cmd_t *pCmd, PN532_InListPassiveTarget_Resp_t *pResp)
+uint8 PN532_InListPassiveTarget(uint8 maxTg, uint8 brTy, uint8 *found, uint8 *pTgtData, uint8 *tgtDataLen)
+{
+  int8 res = PN532_GOOD;
+  uint8 i = 0;
+  uint8 cmdData[2] = { maxTg, brTy };     // MaxTg, BrTy
+  uint8 data[16];
+  uint8 len = 0;
+
+  LOG("## InListPassiveTarget\r\n");
+  res = PN532_Transaction(PN532_CMD_INLISTPASSIVETARGET, cmdData, sizeof(cmdData), data, &len);
+  if (res != PN532_GOOD) {
+    return res;
+  }
+  if (!found || !pTgtData || !tgtDataLen) {
+    return PN532_INVALID_PARAM;
+  }
+  *found = data[1];
+  for (i = 2; i < len; i++) {
+    pTgtData[i - 2] = *(data + i);
+  }
+  *tgtDataLen = len - 2;
+
+  return PN532_GOOD;
+}
+
+uint8 PN532_InListPassiveTarget2(PN532_InListPassiveTarget_Cmd_t *pCmd, PN532_InListPassiveTarget_Resp_t *pResp)
 {
   int8 res = PN532_BUS_BUSY;
   uint8 i = 0;
@@ -436,14 +484,6 @@ uint8 PN532_InListPassiveTarget(PN532_InListPassiveTarget_Cmd_t *pCmd, PN532_InL
   uint8 len = 0;
   uint8 *pPacket = NULL;
   uint8 cmdData[] = { 0x01, 0x00 };     // MaxTg, BrTy
-  /*
-   *  BrTy is the baud rate and the modulation type to be used during the initialization
-   *  − 0x00 : 106 kbps type A (ISO/IEC14443 Type A),
-   *  − 0x01 : 212 kbps (FeliCa polling),
-   *  − 0x02 : 424 kbps (FeliCa polling),
-   *  − 0x03 : 106 kbps type B (ISO/IEC14443-3B),
-   *  − 0x04 : 106 kbps Innovision Jewel tag.
-   */
 
   // Input pCmd -> cmdData
   // TODO
@@ -834,7 +874,7 @@ void PN532_Test(void)
   PN532_InListPassiveTarget_Resp_t resp = { 0x00, {}, 0 };
   PN532_InListPassiveTarget_Resp_106A_t resp160a;
 
-  res = PN532_InListPassiveTarget(&cmd, &resp);
+  res = PN532_InListPassiveTarget2(&cmd, &resp);
   LOG("InLstPasTg: 0x%02x\r\n", res);
   if (res != PN532_GOOD) {
     return ;
@@ -880,12 +920,25 @@ int main(void)
   PN532_ActiveTarget();
   PN532_InAutoPoll();
 #endif
+  sleep_ms(100);
 
   res = PN532_GetFirmwareVersion(&fwVer);
-  LOG("Get_FW_Ver: 0x%02x\r\n", res);
+  LOG("PN532_GetFirmwareVersion: 0x%02x\r\n", res);
 
   while (1) {
+#if 0
+    uint8 found = 0;
+    uint8 tgtData[16];
+    uint8 len = 0;
+
+    res = PN532_InListPassiveTarget(0x01, 0x00, &found, tgtData, &len);
+    LOG("PN532_InListPassiveTarget: 0x%02x\r\n", res);
+    if (res != PN532_GOOD) {
+      PN532_SendAck();
+    }
+#else
     PN532_Test();
+#endif
     sleep(1);
   }
   return 0;
