@@ -859,14 +859,32 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
   // TODO
 #if 1
   // Temp action according to content
+  char str[128];
   if (sRspBuf[5] == 0xd5 && sRspBuf[6] == 0x41 && sRspBuf[7] == 0x00) {
+    // Content data from card: [8]-[15]
+    // [8]      : operation code
+    // [9]-[14] : target board mac address
     switch (sRspBuf[8]) {
-      case 'M':
       case 'D':
+        // Play a specific voice
+        system("madplay /root/1.mp3");
+        break;
+      case 'M':
+        // Set communication target
+        sprintf(str, "ubus call mua.mqtt.service set_msm_target {\"DATA\":{\"TO_USR\":\"%02X%02X%02X%02X%02X%02X\"}}",
+            sRspBuf[9],
+            sRspBuf[10],
+            sRspBuf[11],
+            sRspBuf[12],
+            sRspBuf[13],
+            sRspBuf[14]
+            );
+        system(str);
+        system("madplay /root/2.mp3");
+        break;
       case 'P':
       default:
-        // Play a voice for test
-        //system("madplay /root/d.mp3");
+        // Play a random voice
         system("madplay `ls /root/*.mp3 | awk 'BEGIN{ srand(); } { line[NR]=$0 } END{ print line[(int(rand()*NR+1))] }'`");
         break;
     }
