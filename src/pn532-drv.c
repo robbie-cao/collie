@@ -1012,7 +1012,10 @@ int main(void)
   PN532_Init();
 
   // LowVbat -> Standby
-  ///PN532_WakeUp();
+  PN532_WakeUp();
+  sleep_ms(100);
+  PN532_WakeUp();
+  sleep_ms(100);
   PN532_SAMConfig(0x01, 0, 0);
 #if 0
   PN532_ActiveTarget();
