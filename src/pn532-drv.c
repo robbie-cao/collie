@@ -883,8 +883,11 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
         system("madplay /root/s/2.mp3 -o wave:- | aplay -D plug:dmix");
         break;
       case 'P':
+        // Play a random voice on sd card
+        system("madplay `ls /mnt/mmc/*.mp3 | awk 'BEGIN{ srand(); } { line[NR]=$0 } END{ print line[(int(rand()*NR+1))] }'` -o wave:- | aplay -D plug:dmix");
+        break;
       default:
-        // Play a random voice
+        // Play a random voice on flash
         system("madplay `ls /root/r/*.mp3 | awk 'BEGIN{ srand(); } { line[NR]=$0 } END{ print line[(int(rand()*NR+1))] }'` -o wave:- | aplay -D plug:dmix");
         break;
     }
@@ -969,7 +972,7 @@ void PN532_Test(void)
   // Write data to card
   // D0    - operation
   // D1..6 - mac addr
-  data[0] = 'M';
+  data[0] = 'P';
   data[1] = 0x0C;
   data[2] = 0xEF;
   data[3] = 0xAF;
