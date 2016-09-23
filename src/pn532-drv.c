@@ -819,6 +819,9 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
   uint8 cmdData[16];
   uint8 cmdlen;
   uint8 addr = 0x02;
+  uint8 tfi = 0;
+  uint8 len = 0;
+  uint8 *pPacket = NULL;
 
   // authentication
   idx = 0;
@@ -837,7 +840,7 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
   res = PN532_ReadAck();
   sleep_ms(5);
   res = PN532_ReadRsp(sRspBuf);
-  res = PN532_FrameParser(sRspBuf, res, NULL, NULL);
+  tfi = PN532_FrameParser(sRspBuf, res, (void **)&pPacket, &len);
   // Check ACK and Response Frame
   // TODO
 
@@ -851,14 +854,22 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
   res = PN532_ReadAck();
   sleep_ms(5);
   res = PN532_ReadRsp(sRspBuf);
-  res = PN532_FrameParser(sRspBuf, res, NULL, NULL);
+  tfi = PN532_FrameParser(sRspBuf, res, (void **)&pPacket, &len);
   // Check ACK and Response Frame
   // TODO
-#if 0
-  if (sRspBuf[5] == 0xd5 && sRspBuf[6] == 0x41) {
-    printf("Card dtected!\n");
-    // Play a voice for test
-    system("madplay /root/d.mp3");
+#if 1
+  // Temp action according to content
+  if (sRspBuf[5] == 0xd5 && sRspBuf[6] == 0x41 && sRspBuf[7] == 0x00) {
+    switch (sRspBuf[8]) {
+      case 'M':
+      case 'D':
+      case 'P':
+      default:
+        // Play a voice for test
+        //system("madplay /root/d.mp3");
+        system("madplay `ls /root/*.mp3 | awk 'BEGIN{ srand(); } { line[NR]=$0 } END{ print line[(int(rand()*NR+1))] }'`");
+        break;
+    }
   }
 #endif
 
