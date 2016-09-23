@@ -867,7 +867,7 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
     switch (sRspBuf[8]) {
       case 'D':
         // Play a specific voice
-        system("madplay /root/1.mp3");
+        system("madplay /root/s/1.mp3 -o wave:- | aplay -D plug:dmix");
         break;
       case 'M':
         // Set communication target
@@ -880,12 +880,12 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
             sRspBuf[14]
             );
         system(str);
-        system("madplay /root/2.mp3");
+        system("madplay /root/s/2.mp3 -o wave:- | aplay -D plug:dmix");
         break;
       case 'P':
       default:
         // Play a random voice
-        system("madplay `ls /root/*.mp3 | awk 'BEGIN{ srand(); } { line[NR]=$0 } END{ print line[(int(rand()*NR+1))] }'`");
+        system("madplay `ls /root/r/*.mp3 | awk 'BEGIN{ srand(); } { line[NR]=$0 } END{ print line[(int(rand()*NR+1))] }'` -o wave:- | aplay -D plug:dmix");
         break;
     }
   }
@@ -969,7 +969,7 @@ void PN532_Test(void)
   // Write data to card
   // D0    - operation
   // D1..6 - mac addr
-  data[0] = 'D';
+  data[0] = 'M';
   data[1] = 0x0C;
   data[2] = 0xEF;
   data[3] = 0xAF;
