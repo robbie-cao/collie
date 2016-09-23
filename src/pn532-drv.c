@@ -876,6 +876,59 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
   return PN532_GOOD;
 }
 
+uint8 PN532_WriteMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data, uint8 dataLen)
+{
+  uint8 i, idx = 0;
+  uint8 res = 0;
+  uint8 cmdData[32];
+  uint8 cmdlen;
+  uint8 addr = 0x02;
+  uint8 tfi = 0;
+  uint8 len = 0;
+  uint8 *pPacket = NULL;
+
+  // authentication
+  idx = 0;
+  cmdData[idx++] = pTgt->tg;
+  cmdData[idx++] = 0x60;
+  cmdData[idx++] = addr;
+  for (i = 0; i < 6; i++) {
+    cmdData[idx++] = 0xFF;
+  }
+  for (i = 0; i < pTgt->nfcid_len; i++) {
+    cmdData[idx++] = pTgt->nfcid[i];
+  }
+  res = PN532_SendCmd(PN532_CMD_INDATAEXCHANGE, cmdData, idx, 0);
+  sleep_ms(50);
+
+  res = PN532_ReadAck();
+  sleep_ms(5);
+  res = PN532_ReadRsp(sRspBuf);
+  tfi = PN532_FrameParser(sRspBuf, res, (void **)&pPacket, &len);
+  // Check ACK and Response Frame
+  // TODO
+
+  // read 16 types from addr
+  idx = 0;
+  cmdData[idx++] = pTgt->tg;
+  cmdData[idx++] = 0xA0;
+  cmdData[idx++] = addr;
+  for (i = 0; i < dataLen; i++) {
+    cmdData[idx++] = data[i];
+  }
+  res = PN532_SendCmd(PN532_CMD_INDATAEXCHANGE, cmdData, idx, 0);
+  sleep_ms(50);
+
+  res = PN532_ReadAck();
+  sleep_ms(5);
+  res = PN532_ReadRsp(sRspBuf);
+  tfi = PN532_FrameParser(sRspBuf, res, (void **)&pPacket, &len);
+  // Check ACK and Response Frame
+  // TODO
+
+  return PN532_GOOD;
+}
+
 void PN532_Test(void)
 {
   uint8 res = 0;
@@ -894,6 +947,20 @@ void PN532_Test(void)
     return ;
   }
   res = PN532_InListPassiveTarget_ParseResp(&resp, &resp160a);
+#if 0
+  // Write data to card
+  // D0    - operation
+  // D1..6 - mac addr
+  data[0] = 'D';
+  data[1] = 0x0C;
+  data[2] = 0xEF;
+  data[3] = 0xAF;
+  data[4] = 0xD0;
+  data[5] = 0x02;
+  data[6] = 0x08;
+  res = PN532_WriteMifare(&resp160a, data, 16);
+  LOG("WriteMifare: 0x%02x\r\n", res);
+#endif
   res = PN532_ReadMifare(&resp160a, data);
   LOG("ReadMifare: 0x%02x\r\n", res);
 
