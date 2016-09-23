@@ -871,7 +871,7 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
         break;
       case 'M':
         // Set communication target
-        sprintf(str, "ubus call mua.mqtt.service set_msm_target {\"DATA\":{\"TO_USR\":\"%02X%02X%02X%02X%02X%02X\"}}",
+        sprintf(str, "ubus call mua.mqtt.service set_msm_target '{\"DATA\":{\"TO_USR\":\"%02X%02X%02X%02X%02X%02X\"}}'",
             sRspBuf[9],
             sRspBuf[10],
             sRspBuf[11],
@@ -880,6 +880,7 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
             sRspBuf[14]
             );
         system(str);
+        LOG("%s\n", str);
         system("madplay /root/s/2.mp3 -o wave:- | aplay -D plug:dmix");
         break;
       case 'P':
@@ -972,13 +973,13 @@ void PN532_Test(void)
   // Write data to card
   // D0    - operation
   // D1..6 - mac addr
-  data[0] = 'P';
+  data[0] = 'M';
   data[1] = 0x0C;
   data[2] = 0xEF;
   data[3] = 0xAF;
-  data[4] = 0xD0;
-  data[5] = 0x02;
-  data[6] = 0x08;
+  data[4] = 0xCF;
+  data[5] = 0xFF;
+  data[6] = 0xE2;
   res = PN532_WriteMifare(&resp160a, data, 16);
   LOG("WriteMifare: 0x%02x\r\n", res);
 #endif
