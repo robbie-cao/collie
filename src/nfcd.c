@@ -2,7 +2,68 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "mraa.h"
 #include "pn532.h"
+
+static int action(uint8 *data, uint8 dataLen)
+{
+  // Temp action according to content
+  char str[128];
+
+  if (!data) {
+    return -1;
+  }
+
+  if (data[0] == 0x00) {
+    // data[0]     : status code
+    // data[1]-[7] : content data from card
+    //     [1]     : operation code
+    //     [2]-[7] : target board mac address
+    switch (data[1]) {
+      case 'D':
+        // Play a specific voice
+        LOG("Play a dedicate void on flash\n");
+        system("madplay /root/s/1.mp3 -o wave:- | aplay -D plug:dmix");
+        break;
+      case 'M':
+        // Set communication target
+        LOG("Set target talk to\n");
+        sprintf(str, "ubus call mua.mqtt.service set_msm_target '{\"DATA\":{\"TO_USR\":\"%02X%02X%02X%02X%02X%02X\"}}'",
+            data[2],
+            data[3],
+            data[4],
+            data[5],
+            data[6],
+            data[7]
+            );
+        system(str);
+        //system("madplay /root/s/2.mp3 -o wave:- | aplay -D plug:dmix");
+        {
+          uint8_t on_off = 0;
+          mraa_gpio_context led_gpio;
+
+          led_gpio = mraa_gpio_init(18);  // 18 -> LED_PIN_STATUS
+          on_off = mraa_gpio_read(led_gpio);
+          system("ubus call mua.miod.service status_led_blink {}");
+          system("madplay /root/d.mp3");
+          system("ubus call mua.miod.service status_led_off {}");
+          mraa_gpio_write(led_gpio, on_off);
+        }
+        break;
+      case 'P':
+        // Play a random voice on sd card
+        LOG("Play a random void on sdcard\n");
+        system("madplay `ls /mnt/mmc/*.mp3 | awk 'BEGIN{ srand(); } { line[NR]=$0 } END{ print line[(int(rand()*NR+1))] }'` -o wave:- | aplay -D plug:dmix");
+        break;
+      default:
+        // Play a random voice on flash
+        LOG("Play a random void on flash\n");
+        system("madplay `ls /root/r/*.mp3 | awk 'BEGIN{ srand(); } { line[NR]=$0 } END{ print line[(int(rand()*NR+1))] }'` -o wave:- | aplay -D plug:dmix");
+        break;
+    }
+  }
+  return 0;
+}
 
 int main(void)
 {
@@ -38,7 +99,29 @@ int main(void)
       PN532_SendAck();
     }
 #else
-    PN532_Test();
+
+    uint8 data[32];
+    PN532_InListPassiveTarget_Cmd_t cmd = { 0x01, 0x00, {}, 0 };
+    PN532_InListPassiveTarget_Resp_t resp = { 0x00, {}, 0 };
+    PN532_InListPassiveTarget_Resp_106A_t resp160a;
+
+    res = PN532_InListPassiveTarget2(&cmd, &resp);
+    LOG("InLstPasTg: 0x%02x\r\n", res);
+    if (res != PN532_GOOD) {
+      continue ;
+    }
+    if (!resp.nbTg) {
+      LOG("Not found card!\n");
+      continue ;
+    }
+    res = PN532_InListPassiveTarget_ParseResp(&resp, &resp160a);
+    // Check resp UID and managing card
+    // TODO
+    res = PN532_ReadMifare(&resp160a, data);
+    LOG("ReadMifare: 0x%02x\r\n", res);
+
+    res = action(data, 0);
+
 #endif
     sleep(1);
   }

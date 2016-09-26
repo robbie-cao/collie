@@ -841,8 +841,12 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
   res = PN532_ReadRsp(sRspBuf);
   tfi = PN532_FrameParser(sRspBuf, res, (void **)&pPacket, &len);
   // Check ACK and Response Frame
-  // TODO
-#if 1
+  if (tfi == PN532_TFI_PN2HOST && pPacket[0] == PN532_CMD_INDATAEXCHANGE + 1) {
+    for (i = 0; i < len - 1; i++) {
+      data[i] = pPacket[i + 1];
+    }
+  }
+#if 0
   // Temp action according to content
   char str[128];
   if (sRspBuf[5] == 0xd5 && sRspBuf[6] == 0x41 && sRspBuf[7] == 0x00) {
