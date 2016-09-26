@@ -877,7 +877,6 @@ uint8 PN532_ReadMifare(PN532_InListPassiveTarget_Resp_106A_t *pTgt, uint8 *data)
         led_gpio = mraa_gpio_init(18);  // 18 -> LED_PIN_STATUS
         on_off = mraa_gpio_read(led_gpio);
         system("ubus call mua.miod.service status_led_blink {}");
-        system("madplay /root/d.mp3");
         system("ubus call mua.miod.service status_led_off {}");
         mraa_gpio_write(led_gpio, on_off);
         }
