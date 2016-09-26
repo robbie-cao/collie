@@ -2,7 +2,10 @@ all: target
 FORCE: ;
 .PHONY: FORCE
 
-target: btnd ledd nfcd
+target:	btnd \
+	ledd \
+	pn532-util \
+	nfcd
 
 %.o: %.c
 	@$(CC) $(CFLAGS) -c $< -o $@
@@ -22,6 +25,9 @@ ledd: led.o
 nfcd: pn532-drv.o nfcd.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
+pn532-util: pn532-drv.o pn532-util.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
 clean:
-	rm -f *.o btnd
+	rm -f *.o $(target)
 
