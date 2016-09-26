@@ -5,6 +5,25 @@
 #include "mraa.h"
 #include "pn532.h"
 
+PN532_InListPassiveTarget_Resp_106A_t card;
+
+static uint8 check_card_operated(PN532_InListPassiveTarget_Resp_106A_t *pCard)
+{
+  uint8 i = 0;
+
+  if (pCard->nfcid_len != card.nfcid_len) {
+    return 0;
+  }
+
+  for (i = 0; i < pCard->nfcid_len; i++) {
+    if (pCard->nfcid[i] != card.nfcid[i]) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
 static int action(uint8 *data, uint8 dataLen)
 {
   // Temp action according to content
@@ -87,6 +106,8 @@ int main(void)
   LOG("PN532_GetFirmwareVersion: 0x%02x\r\n", res);
 
   while (1) {
+    sleep_ms(1000);
+
 #if CHECK_AVAILABILITY
     uint8 found = 0;
     uint8 tgtData[16];
@@ -107,22 +128,34 @@ int main(void)
     res = PN532_InListPassiveTarget2(&cmd, &resp);
     LOG("InLstPasTg: 0x%02x\r\n", res);
     if (res != PN532_GOOD) {
-      continue ;
+      continue;
     }
     if (!resp.nbTg) {
       LOG("Not found card!\n");
-      continue ;
+      continue;
     }
     res = PN532_InListPassiveTarget_ParseResp(&resp, &resp160a);
     // Check resp UID and managing card
     // TODO
+    if (check_card_operated(&resp160a)) {
+      // Card already handled, skip to read it
+      LOG("Card handled, can be removed!\n");
+      continue;
+    }
+
+    // New card detected, read it
+    LOG("New Card!\n");
     res = PN532_ReadMifare(&resp160a, data);
     LOG("ReadMifare: 0x%02x\r\n", res);
 
     res = action(data, 0);
 
+    // Store card for management
+    // Simple and ugly!
+    // More TBD
+    memcpy(&card, &resp160a, sizeof(card));
+
 #endif
-    sleep(1);
   }
   return 0;
 }
