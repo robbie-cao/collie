@@ -2,10 +2,11 @@ all: target
 FORCE: ;
 .PHONY: FORCE
 
-target:	btnd \
-	ledd \
-	pn532-util \
-	nfcd
+target:	btnd    \
+	ledd        \
+	iod         \
+	nfcd        \
+	pn532-util
 
 %.o: %.c
 	@$(CC) $(CFLAGS) -c $< -o $@
@@ -20,6 +21,9 @@ btnd: button.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 ledd: led.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
+iod: iod.o uart.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 nfcd: pn532-drv.o nfcd.o
