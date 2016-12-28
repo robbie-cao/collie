@@ -5,6 +5,7 @@ FORCE: ;
 target:	btnd    \
 	ledd        \
 	iod         \
+	io2         \
 	nfcd        \
 	pn532-util
 
@@ -23,7 +24,10 @@ btnd: button.o
 ledd: led.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
-iod: iod.o hex.o cmd.o uart.o
+iod: iod.o hex.o cmd.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
+io2: io2.o hex.o cmd.o uart.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 nfcd: pn532-drv.o nfcd.o
