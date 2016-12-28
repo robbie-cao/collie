@@ -38,9 +38,45 @@
 #  include <stdio.h>
 #  include <string.h>
 #  include <stdlib.h>
+#  include <stdint.h>
 
 
+#ifdef HAVE_NFC_H
 #  include <nfc/nfc-types.h>
+#else
+/* Error codes */
+/** @ingroup error
+ * @hideinitializer
+ * Success (no error)
+ */
+#define NFC_SUCCESS             0
+#define NFC_EIO                 -1
+#define NFC_EINVARG             -2
+#define NFC_EDEVNOTSUPP         -3
+#define NFC_ENOTSUCHDEV         -4
+#define NFC_EOVFLOW             -5
+#define NFC_ETIMEOUT            -6
+#define NFC_EOPABORTED          -7
+#define NFC_ENOTIMPL            -8
+#define NFC_ETGRELEASED         -10
+#define NFC_ERFTRANS            -20
+#define NFC_EMFCAUTHFAIL        -30
+#define NFC_ESOFT               -80
+#define NFC_ECHIP               -90
+
+#define MIN(x, y)   ((x) < (y) ? (x) : (y))
+#define MAX(x, y)   ((x) > (y) ? (x) : (y))
+#endif
+
+#ifndef bool
+#define bool    uint8_t
+#endif
+#ifndef true
+#define true    1
+#endif
+#ifndef false
+#define false   1
+#endif
 
 // Define shortcut to types to make code more readable
 typedef void *serial_port;

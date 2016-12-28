@@ -51,11 +51,27 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#ifdef HAVE_NFC_H
 #include <nfc/nfc.h>
 #include "nfc-internal.h"
 
 #define LOG_GROUP    NFC_LOG_GROUP_COM
 #define LOG_CATEGORY "libnfc.bus.uart"
+
+#else
+
+#define LOG_GROUP    5
+#define LOG_CATEGORY "uart"
+
+#define log_put(group, category, priority, format, ...)
+#define LOG_HEX(group, pcTag, pbtData, szBytes)     \
+  do {              \
+    (void) group;   \
+    (void) pcTag;   \
+    (void) pbtData; \
+    (void) szBytes; \
+  } while (0)
+#endif
 
 #ifndef _WIN32
 // Needed by sleep() under Unix

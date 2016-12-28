@@ -23,7 +23,7 @@ btnd: button.o
 ledd: led.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
-iod: iod.o hex.o cmd.o
+iod: iod.o hex.o cmd.o uart.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 nfcd: pn532-drv.o nfcd.o
