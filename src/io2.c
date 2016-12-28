@@ -111,12 +111,16 @@ int main(void)
         int len = 0;
 
         res = uart_receive(sp, buf_in, 1, NULL, 0);
-        LOGD(LOG_TAG, "Heading: %c\n", buf_in[0]);
+        LOGD(LOG_TAG, "Heading: 0x%02x\n", buf_in[0]);
 
-        if (buf_in[0] == 'U') {
+        if (buf_in[0] == 0x55) {    // 0x55 => 'U'
             res = uart_receive(sp, buf_in, 2, NULL, 0);
+#if 0 // ASCII
             len = (hex2digit(buf_in[0]) << 8) | hex2digit(buf_in[1]);
-            LOGD(LOG_TAG, "Size: %d\n", len);
+#else
+            len = (buf_in[0] << 8) | buf_in[1];
+#endif
+            LOGD(LOG_TAG, "Size: 0x%02x %02x - %d\n", buf_in[0], buf_in[1], len);
         }
 
         if (len) {
