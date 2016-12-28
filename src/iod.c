@@ -13,6 +13,10 @@
 #include <sys/ioctl.h>
 
 #include "log.h"
+#include "hex.h"
+#include "cmd.h"
+
+#define DEBUG               1
 
 #define TTY_UART            "/dev/ttyS2"
 
@@ -62,6 +66,44 @@ void sanity(void)
     }
 
     close(fd);
+}
+
+static int cmd_callback(const struct stm8_cmd *pcmd, uint8_t cmd_size)
+{
+    uint8_t i;
+    uint8_t cmd;
+
+    if (!pcmd || !cmd_size) {
+        return -1;
+    }
+
+    cmd = pcmd->cmd_code;
+    printf("CMD: %d\n", pcmd->cmd_code);
+
+    switch (cmd) {
+        case LED_GET:
+            for (i = 0; i < cmd_size; i += sizeof(struct led_cmd)) {
+                printf("LED %d - %d\n", pcmd->data[i], pcmd->data[i + 1]);
+            }
+            break;
+        case BUTTON_GET:
+            for (i = 0; i < cmd_size; i += sizeof(struct button_cmd)) {
+                printf("BTN %d - %d\n", pcmd->data[i], pcmd->data[i + 1]);
+            }
+            break;
+        case VOL_GET:
+            for (i = 0; i < cmd_size; i += sizeof(struct vol_cmd)) {
+                printf("VOL %d\n", pcmd->data[i]);
+            }
+            break;
+        case NFC_CARD_INFO:
+        case NFC_READ_CARD:
+            // TODO
+        default:
+            break;
+    }
+
+    return 0;
 }
 
 int main(void)
