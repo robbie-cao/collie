@@ -89,12 +89,39 @@ int main(void)
     uart_send(sp, str, strlen(str), 0);
 
     while (1) {
+#if 0
         res = uart_recv(sp, buf_in, 255, NULL, 0);
         buf_in[res] = '\0';
 
         LOGD(LOG_TAG, "%s\n", buf_in);
         if (strcmp((char *)buf_in, "quit") == 0) {
             break;
+        }
+
+#endif
+        /**
+         * Data format:
+         *
+         *   1    |    2     |     1     |     n     |
+         * --------------------------------------------
+         *  0x55  | cmd_size | cmd_code  |  cmd_data |
+         *
+         * Simulate with ascii, eg: "U03123"
+         */
+        int len = 0;
+
+        res = uart_receive(sp, buf_in, 1, NULL, 0);
+        LOGD(LOG_TAG, "Heading: %c\n", buf_in[0]);
+
+        if (buf_in[0] == 'U') {
+            res = uart_receive(sp, buf_in, 2, NULL, 0);
+            len = (hex2digit(buf_in[0]) << 8) | hex2digit(buf_in[1]);
+            LOGD(LOG_TAG, "Size: %d\n", len);
+        }
+
+        if (len) {
+            res = uart_receive(sp, buf_in, len, NULL, 0);
+            hexdump(buf_in, len);
         }
 
         printf("...\n");
