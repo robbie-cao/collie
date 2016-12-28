@@ -89,9 +89,8 @@ int main(void)
     uart_send(sp, str, strlen(str), 0);
 
     while (1) {
-
-        res = uart_receive(sp, buf_in, 10, NULL, 0);
-        buf_in[10] = '\0';
+        res = uart_recv(sp, buf_in, 255, NULL, 0);
+        buf_in[res] = '\0';
 
         LOGD(LOG_TAG, "%s\n", buf_in);
         if (strcmp((char *)buf_in, "quit") == 0) {
@@ -101,6 +100,7 @@ int main(void)
         printf("...\n");
     }
 
+    D();
     uart_close(sp);
 
     return 0;

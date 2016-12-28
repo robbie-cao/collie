@@ -382,6 +382,76 @@ select:
 }
 
 /**
+ * @brief Receive data from UART and copy data to \a pbtRx
+ *
+ * @return received_bytes_count on success, otherwise driver error code
+ */
+int
+uart_recv(serial_port sp, uint8_t *pbtRx, const size_t szRxMax, void *abort_p, int timeout)
+{
+  int iAbortFd = abort_p ? *((int *)abort_p) : 0;
+  int available_bytes_count = 0;
+  int res;
+  fd_set rfds;
+
+select:
+  // Reset file descriptor
+  FD_ZERO(&rfds);
+  FD_SET(UART_DATA(sp)->fd, &rfds);
+
+  if (iAbortFd) {
+    FD_SET(iAbortFd, &rfds);
+  }
+
+  struct timeval timeout_tv;
+  if (timeout > 0) {
+    timeout_tv.tv_sec = (timeout / 1000);
+    timeout_tv.tv_usec = ((timeout % 1000) * 1000);
+  }
+
+  res = select(MAX(UART_DATA(sp)->fd, iAbortFd) + 1, &rfds, NULL, NULL, timeout ? &timeout_tv : NULL);
+
+  if ((res < 0) && (EINTR == errno)) {
+    // The system call was interupted by a signal and a signal handler was
+    // run.  Restart the interupted system call.
+    goto select;
+  }
+
+  // Read error
+  if (res < 0) {
+    log_put(LOG_GROUP, LOG_CATEGORY, NFC_LOG_PRIORITY_DEBUG, "Error: %s", strerror(errno));
+    return NFC_EIO;
+  }
+  // Read time-out
+  if (res == 0) {
+    log_put(LOG_GROUP, LOG_CATEGORY, NFC_LOG_PRIORITY_DEBUG, "%s", "Timeout!");
+    return NFC_ETIMEOUT;
+  }
+
+  if (FD_ISSET(iAbortFd, &rfds)) {
+    // Abort requested
+    log_put(LOG_GROUP, LOG_CATEGORY, NFC_LOG_PRIORITY_DEBUG, "%s", "Abort!");
+    close(iAbortFd);
+    return NFC_EOPABORTED;
+  }
+
+  // Retrieve the count of the incoming bytes
+  res = ioctl(UART_DATA(sp)->fd, FIONREAD, &available_bytes_count);
+  if (res != 0) {
+    return NFC_EIO;
+  }
+  // There is something available, read the data
+  res = read(UART_DATA(sp)->fd, pbtRx, MIN(available_bytes_count, szRxMax));
+  // Stop if the OS has some troubles reading the data
+  if (res <= 0) {
+    return NFC_EIO;
+  }
+
+  LOG_HEX(LOG_GROUP, "RX", pbtRx, res);
+  return res;
+}
+
+/**
  * @brief Send \a pbtTx content to UART
  *
  * @return 0 on success, otherwise a driver error is returned
