@@ -28,45 +28,6 @@ static uint8_t buf_in[BUFFER_SIZE];
 static uint8_t buf2[BUFFER_SIZE / 2];
 #endif
 
-
-static int cmd_callback(const struct stm8_cmd *pcmd, uint8_t cmd_size)
-{
-    uint8_t i;
-    uint8_t cmd;
-
-    if (!pcmd || !cmd_size) {
-        return -1;
-    }
-
-    cmd = pcmd->cmd_code;
-    printf("CMD: %d\n", pcmd->cmd_code);
-
-    switch (cmd) {
-        case LED_GET:
-            for (i = 0; i < cmd_size; i += sizeof(struct led_cmd)) {
-                printf("LED %d - %d\n", pcmd->data[i], pcmd->data[i + 1]);
-            }
-            break;
-        case BUTTON_GET:
-            for (i = 0; i < cmd_size; i += sizeof(struct button_cmd)) {
-                printf("BTN %d - %d\n", pcmd->data[i], pcmd->data[i + 1]);
-            }
-            break;
-        case VOL_GET:
-            for (i = 0; i < cmd_size; i += sizeof(struct vol_cmd)) {
-                printf("VOL %d\n", pcmd->data[i]);
-            }
-            break;
-        case NFC_CARD_INFO:
-        case NFC_READ_CARD:
-            // TODO
-        default:
-            break;
-    }
-
-    return 0;
-}
-
 int main(void)
 {
     const char *LOG_TAG = "IOD";
@@ -90,6 +51,7 @@ int main(void)
 
     while (1) {
 #if 0
+        // Test uart_recv
         res = uart_recv(sp, buf_in, 255, NULL, 0);
         buf_in[res] = '\0';
 
@@ -97,8 +59,8 @@ int main(void)
         if (strcmp((char *)buf_in, "quit") == 0) {
             break;
         }
-
 #endif
+
         /**
          * Data format:
          *
@@ -131,7 +93,6 @@ int main(void)
         printf("...\n");
     }
 
-    D();
     uart_close(sp);
 
     return 0;
