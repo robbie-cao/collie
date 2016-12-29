@@ -88,10 +88,15 @@ void thread_stdin_handler(int *arg)
 
             switch (input[0]) {
                 case '1':
+                    printf("Simulate setting led\n");
+                    uart_send(sp, input, strlen(input), 0);
                     break;
                 case '2':
+                    printf("Simulate read/write NFC\n");
+                    uart_send(sp, input, strlen(input), 0);
                     break;
                 default:
+                    uart_send(sp, input, strlen(input), 0);
                     break;
             }
         }
