@@ -7,6 +7,8 @@ target:	btnd    \
 	iod         \
 	iou         \
 	io2         \
+	mp3_to_wav  \
+	minimad 	\
 	nfcd        \
 	pn532-util
 
@@ -32,6 +34,12 @@ iou: iou.o hex.o cmd.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 io2: io2.o hex.o cmd.o uart.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
+mp3_to_wav: mp3_to_wav.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
+minimad: minimad.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 nfcd: pn532-drv.o nfcd.o

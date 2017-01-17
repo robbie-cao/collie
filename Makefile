@@ -11,10 +11,10 @@ define Package/miod
 	CATEGORY:=Utilities
 	DEFAULT:=y
 	TITLE:=Mua I/O daemon
-	DEPENDS:=+libmraa +libubus +libubox +libblobmsg-json +libpthread
+	DEPENDS:=+libmraa +libubus +libubox +libblobmsg-json +libpthread +libmpg123 +libsndfile +libmad
 endef
 
-EXTRA_LDFLAGS += -lmraa -lubus -lubox -lblobmsg_json -lpthread
+EXTRA_LDFLAGS += -lmraa -lubus -lubox -lblobmsg_json -lpthread -lmpg123 -lsndfile -lmad
 TARGET_CFLAGS+= -Wall
 
 define Build/Prepare
@@ -29,6 +29,8 @@ define Package/miod/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/iod $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/iou $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/io2 $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mp3_to_wav $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/minimad $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/nfcd $(1)/usr/bin
 	#$(INSTALL_BIN) $(PKG_BUILD_DIR)/pn532-util $(1)/usr/bin
 endef
